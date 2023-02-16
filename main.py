@@ -10,8 +10,7 @@ os.chdir(os.path.dirname(os.path.realpath(__file__)))
 if not os.path.isdir('data'):
     os.mkdir('data')
 
-intents = disnake.Intents.default()
-intents.members = True
+intents = disnake.Intents.all()
 bot = commands.InteractionBot(test_guilds=IDS, intents=intents)
 
 bot.load_extension('cogs.commands')

@@ -62,37 +62,33 @@ class OtherCommands(commands.Cog):
         :return:
         """
 
-        emb = disnake.Embed(title='Информация о боте "КВАНт"', color=disnake.Colour.blue())
-        emb.set_thumbnail(r'https://i.pinimg.com/originals/64/39/45/643945344aa7b4c3d8151ea1ec80212c.jpg')
-        emb.add_field(name='Название:', value='Комитет Везопасности Академии Наук (т)', inline=False)
-        emb.add_field(name='Версия:', value='alpha v0.3', inline=False)
+        emb = disnake.Embed(title=f'Информация о боте "{self.bot.user.name}"', color=disnake.Colour.blue())
+        emb.set_thumbnail(self.bot.user.avatar)
+        emb.add_field(name='Версия:', value='beta v0.4', inline=False)
         emb.add_field(name='Описание:', value='Бот создан для упрощения работы админов.', inline=False)
         emb.add_field(name='Что нового:',
-                      value='```diff\nv0.3\n'
-                            '+Бот создан.\n'
-                            '+Добавлена возможность назначать заданную роль новым участникам.\n'
-                            '+Добавлена возможность создать сообщение для автовыдачи ролей участникам по реакциям.\n'
-                            '+Добавлено оповещение о присоединении/уходе участников.\n'
+                      value='```diff\nv0.4\n'
+                            '+Добавлена статистика участников сервера.\n'
+                            '+Добавлена статистика сервера.\n'
                             '```', inline=False)
         emb.set_footer(text='@Arkebuzz#7717',
-                       icon_url='https://sun1-27.userapi.com/s/v1/ig1'
-                                '/FEUHI48F0M7K3DXhPtF_hChVzAsFiKAvaTvSG3966WmikzGIrLrj0u7UPX7o_zQ1vMW0x4CP.jpg?size'
-                                '=400x400&quality=96&crop=528,397,709,709&ava=1')
+                       icon_url='https://cdn.discordapp.com/avatars/542244057947308063/'
+                                '4b8f2972eb7475f44723ac9f84d9c7ec.png?size=1024')
 
         await inter.response.send_message(embed=emb)
         logger.info(f'[CALL] <@{inter.author.id}> /info')
 
 
-class DistributionRoles(commands.Cog):
+class DistributionCommands(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
 
     @commands.slash_command(
-        name='edit_default_role',
+        name='set_default_role',
         description='Изменить стандартную роль для новых участников сервера.',
         default_member_permissions=disnake.Permissions(8)
     )
-    async def edit_default_role(self, inter: disnake.ApplicationCommandInteraction, role: disnake.Role):
+    async def set_default_role(self, inter: disnake.ApplicationCommandInteraction, role: disnake.Role):
         """
         Обновляет связку роль - реакция на сервере.
 
@@ -106,22 +102,22 @@ class DistributionRoles(commands.Cog):
             await inter.response.send_message('Невозможно настроить роль по умолчанию, данная роль превосходит роль '
                                               'бота.', ephemeral=True)
 
-            logger.info(f'[CALL] <@{inter.author.id}> /edit_default_role incorrect role')
+            logger.info(f'[CALL] <@{inter.author.id}> /set_default_role incorrect role')
 
         elif role.is_default():
             db.update_guild_settings(inter.guild_id, role_id='NULL')
             await inter.response.send_message('Роль по умолчанию настроена.', ephemeral=True)
 
-            logger.info(f'[CALL] <@{inter.author.id}> /edit_default_role role`s append')
+            logger.info(f'[CALL] <@{inter.author.id}> /set_default_role role`s append')
 
         else:
             db.update_guild_settings(inter.guild_id, role_id=inter.id)
             await inter.response.send_message('Роль по умолчанию настроена.', ephemeral=True)
 
-            logger.info(f'[CALL] <@{inter.author.id}> /edit_default_role role`s append')
+            logger.info(f'[CALL] <@{inter.author.id}> /set_default_role role`s append')
 
     @commands.slash_command(
-        name='add_role2distribution_roles',
+        name='distribution_add_role',
         description='Добавить роль к автовыдачи по эмодзи.',
         default_member_permissions=disnake.Permissions(8)
     )
@@ -141,23 +137,23 @@ class DistributionRoles(commands.Cog):
             await inter.response.send_message('Невозможно добавить связку роль - реакция, данная роль превосходит роль '
                                               'бота или является ролью по умолчанию.', ephemeral=True)
 
-            logger.info(f'[CALL] <@{inter.author.id}> /add_role2distribution_roles incorrect role')
+            logger.info(f'[CALL] <@{inter.author.id}> /distribution_add_role incorrect role')
 
         elif emoji.is_emoji(reaction):
             db.update_reaction4role(inter.guild_id, role.id, reaction)
-            await inter.response.send_message('Связка роль - реакция добавлена, используйте /new_distribution_roles,'
+            await inter.response.send_message('Связка роль - реакция добавлена, используйте /distribution_new_message,'
                                               'чтобы обновить сообщение выдачи ролей.', ephemeral=True)
 
-            logger.info(f'[CALL] <@{inter.author.id}> /add_role2distribution_roles role`s append')
+            logger.info(f'[CALL] <@{inter.author.id}> /distribution_add_role role`s append')
 
         else:
             await inter.response.send_message('Невозможно добавить связку роль - реакция, переданная реакция не '
                                               'является смайликом.', ephemeral=True)
 
-            logger.info(f'[CALL] <@{inter.author.id}> /add_role2distribution_roles reaction isn`t emoji')
+            logger.info(f'[CALL] <@{inter.author.id}> /distribution_add_role reaction isn`t emoji')
 
     @commands.slash_command(
-        name='del_role2distribution_roles',
+        name='distribution_del_role',
         description='Удалить роль из автовыдачи по эмодзи.',
         default_member_permissions=disnake.Permissions(8)
     )
@@ -171,13 +167,13 @@ class DistributionRoles(commands.Cog):
         """
 
         db.delete_reaction4role(inter.guild_id, role.id)
-        await inter.response.send_message('Связка роль - реакция удалена, используйте /new_distribution_roles, '
+        await inter.response.send_message('Связка роль - реакция удалена, используйте /distribution_new_message, '
                                           'чтобы обновить сообщение выдачи ролей.', ephemeral=True)
 
-        logger.info(f'[CALL] <@{inter.author.id}> /del_role2distribution_roles')
+        logger.info(f'[CALL] <@{inter.author.id}> /distribution_add_role')
 
     @commands.slash_command(
-        name='new_distribution_roles',
+        name='distribution_new_message',
         description='Новое сообщение с автовыдачей ролей по эмодзи.',
         default_member_permissions=disnake.Permissions(8)
     )
@@ -205,11 +201,94 @@ class DistributionRoles(commands.Cog):
             await mes.add_reaction(reaction)
 
         db.update_guild_settings(inter.guild_id, message_id=mes.id)
-        logger.info(f'[CALL] <@{inter.author.id}> /new_distribution_roles')
+        logger.info(f'[CALL] <@{inter.author.id}> /distribution_new_message')
+
+
+class StatisticCommands(commands.Cog):
+    def __init__(self, bot: commands.Bot):
+        self.bot = bot
+
+    @commands.slash_command(
+        name='user_info',
+        description='Статистика пользователя.',
+    )
+    async def user_info(self, inter: disnake.ApplicationCommandInteraction, user: disnake.Member = None):
+        if user is None:
+            user = inter.author
+
+        db_info = db.get_users(inter.guild_id, user.id)
+        if user.id == self.bot.user.id:
+            info = [0, 0, '∞', '∞', '∞']
+            s2m = '∞'
+        elif db_info:
+            info = db_info[0]
+            s2m = round(info[4] / info[3], 2) if info[3] else 0
+        else:
+            info = [0, 0, 0, 0, 0]
+            s2m = 0
+
+        emb = disnake.Embed(colour=user.color)
+
+        emb.add_field('Опыт', info[2])
+        emb.add_field('Зарегистрирован', f'<t:{int(user.created_at.timestamp())}:R>')
+        emb.add_field('Присоединился', f'<t:{int(user.joined_at.timestamp())}:R>')
+
+        emb.add_field('Сообщений', info[3])
+        emb.add_field('Символов', info[4])
+        emb.add_field('Длина сообщений', s2m)
+
+        emb.set_author(name=user.name + f'\t\t\t\t\t\t\t\tУровень {info[2] // 1000 + 1}', icon_url=user.avatar)
+        emb.set_footer(text=f'ID: {user.id}')
+
+        await inter.response.send_message(embed=emb, ephemeral=True)
+        logger.info(f'[CALL] <@{inter.author.id}> /user_info')
+
+    @commands.slash_command(
+        name='user_top',
+        description='Топ пользователей по количеству опыта.',
+    )
+    async def user_top(self, inter: disnake.ApplicationCommandInteraction):
+        info = db.get_users(inter.guild_id)[:10]
+        print(db.get_users(inter.guild_id))
+
+        emb = disnake.Embed(title=f'Топ пользователей', colour=disnake.Colour.gold())
+
+        emb.add_field('№', '\n'.join([str(num + 1) for num in range(len(info))]))
+        emb.add_field('Участник', '\n'.join([f'<@{user[1]}>' for user in info]))
+        emb.add_field('Опыт', '\n'.join([str(user[2]) for user in info]))
+
+        await inter.response.send_message(embed=emb)
+        logger.info(f'[CALL] <@{inter.author.id}> /user_top')
+
+    @commands.slash_command(
+        name='server_info',
+        description='Информация о сервере.',
+    )
+    async def server_info(self, inter: disnake.ApplicationCommandInteraction):
+        guild = inter.guild
+        info = db.get_users(guild.id)
+        exp = sum(us[2] for us in info) // 2
+        mes = sum(us[3] for us in info)
+
+        emb = disnake.Embed(colour=disnake.Colour.gold())
+        emb.set_author(name=guild.name + f'\t\t\t\tУровень {exp // 1000 + 1}', icon_url=guild.icon)
+
+        emb.add_field('Опыт', exp)
+        emb.add_field('Создатель', f'<@{guild.owner_id}>')
+        emb.add_field('Создан', f'<t:{int(guild.created_at.timestamp())}:R>')
+        emb.add_field('Участников', guild.member_count)
+        emb.add_field('Сообщений', mes)
+        emb.add_field('', '')
+
+        emb.set_footer(text=f'ID: {guild.id}')
+
+        await inter.response.send_message(embed=emb)
+        logger.info(f'[CALL] <@{inter.author.id}> /server_info')
 
 
 def setup(bot: commands.Bot):
     """Регистрация команд бота."""
 
     bot.add_cog(OtherCommands(bot))
-    bot.add_cog(DistributionRoles(bot))
+    bot.add_cog(DistributionCommands(bot))
+    bot.add_cog(StatisticCommands(bot))

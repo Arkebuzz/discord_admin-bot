@@ -1,7 +1,7 @@
 import disnake
 from disnake.ext import commands
 
-from config import IDS, BOT_ID
+from config import IDS
 from utils.db import DB
 from utils.logger import logger
 
@@ -50,9 +50,8 @@ async def refresh(bot):
             g = bot.get_guild(guild)
             channels = (
                 (g.system_channel,) if g.system_channel is not None else () +
-                                                                         (
-                                                                         g.public_updates_channel,) if g.public_updates_channel is not None else () +
-                                                                                                                                                 g.text_channels
+                (g.public_updates_channel,) if g.public_updates_channel is not None else () +
+                g.text_channels
             )
 
             for channel in channels:
@@ -82,6 +81,21 @@ class MainEvents(commands.Cog):
         :return:
         """
 
+        emb = disnake.Embed(title=f'Информация о боте "{self.bot.user.name}"', color=disnake.Colour.blue())
+        emb.set_thumbnail(self.bot.user.avatar)
+        emb.add_field(name='Версия:', value='beta v0.4', inline=False)
+        emb.add_field(name='Описание:', value='Бот создан для упрощения работы админов.', inline=False)
+        emb.add_field(name='Что нового:',
+                      value='```diff\nv0.4\n'
+                            '+Добавлена статистика участников сервера.\n'
+                            '+Добавлена статистика сервера.\n'
+                            '```', inline=False)
+        emb.set_footer(text='@Arkebuzz#7717',
+                       icon_url='https://cdn.discordapp.com/avatars/542244057947308063/'
+                                '4b8f2972eb7475f44723ac9f84d9c7ec.png?size=1024')
+
+        # await self.bot.get_channel(1075105989818339359).send(embed=emb)
+
         logger.info('Bot started')
         await refresh(self.bot)
 
@@ -94,7 +108,35 @@ class MainEvents(commands.Cog):
         :return:
         """
 
-        logger.info(f'[NEW GUILD] <{guild.id}>')
+        logger.info(f'[NEW GUILD] <{guild.id}> starting messages analyze')
+
+        for channel in guild.text_channels:
+            try:
+                await channel.send('Здравствуйте, я очень рад, что вы добавили меня на сервер.\n'
+                                   'Сейчас я проведу анализ текущих сообщений на сервере, это может занять несколько '
+                                   'минут, пожалуйста подождите.')
+                break
+            except disnake.errors.Forbidden:
+                continue
+
+        db.update_guild_settings(guild.id)
+
+        for ch in guild.text_channels:
+            try:
+                async for mes in ch.history(limit=10000):
+                    db.update_user(guild.id, mes.author.id, len(mes.content))
+            except disnake.errors.Forbidden:
+                continue
+
+        for channel in guild.text_channels:
+            try:
+                await channel.send('Для первоначальной настройки бота используйте функцию /set_log_channel.\n'
+                                   'Бот не будет корректно работать, пока Вы этого не сделаете.')
+                break
+            except disnake.errors.Forbidden:
+                continue
+
+        logger.info(f'[NEW GUILD] <{guild.id}> finished, messages are analyzed')
 
         await refresh(self.bot)
 
@@ -120,7 +162,7 @@ class ReactionEvents(commands.Cog):
 
     @commands.Cog.listener()
     async def on_raw_reaction_add(self, payload: disnake.RawReactionActionEvent):
-        if payload.user_id == BOT_ID:
+        if payload.user_id == self.bot.user.id:
             return
 
         emoji = str(payload.emoji)
@@ -137,7 +179,7 @@ class ReactionEvents(commands.Cog):
 
     @commands.Cog.listener()
     async def on_raw_reaction_remove(self, payload: disnake.RawReactionActionEvent):
-        if payload.user_id == BOT_ID:
+        if payload.user_id == self.bot.user.id:
             return
 
         emoji = str(payload.emoji)
@@ -187,9 +229,25 @@ class MemberEvents(commands.Cog):
             logger.info(f'[DEL USER] <{payload.user.id}>')
 
 
+class MessageEvents(commands.Cog):
+    """Класс, задающий активности пользователей."""
+
+    def __init__(self, bot: commands.InteractionBot):
+        self.bot = bot
+
+    @commands.Cog.listener()
+    async def on_message(self, mes: disnake.Message):
+        if mes.author.id == self.bot.user.id:
+            return
+
+        db.update_guild_settings(mes.guild.id)
+        db.update_user(mes.guild.id, mes.author.id, len(mes.content))
+
+
 def setup(bot: commands.InteractionBot):
     """Регистрация активностей бота."""
 
     bot.add_cog(MainEvents(bot))
     bot.add_cog(ReactionEvents(bot))
     bot.add_cog(MemberEvents(bot))
+    bot.add_cog(MessageEvents(bot))
