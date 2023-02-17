@@ -15,7 +15,7 @@ class OtherCommands(commands.Cog):
 
     @commands.slash_command(
         name='info',
-        description='Информация о боте.',
+        description='Информация о боте',
     )
     async def info(self, inter: disnake.ApplicationCommandInteraction):
         """
@@ -25,9 +25,9 @@ class OtherCommands(commands.Cog):
         :return:
         """
 
-        emb = disnake.Embed(title=f'Информация о боте "{self.bot.user.name}"', color=disnake.Colour.blue())
+        emb = disnake.Embed(title=f'Информация о боте "{self.bot.user.name}"', color=disnake.Colour.gold())
         emb.set_thumbnail(self.bot.user.avatar)
-        emb.add_field(name='Версия:', value='beta v0.4', inline=False)
+        emb.add_field(name='Версия:', value='beta v0.4.2', inline=False)
         emb.add_field(name='Описание:', value='Бот создан для упрощения работы админов.', inline=False)
         emb.add_field(name='Что нового:',
                       value='```diff\nv0.4\n'
@@ -43,8 +43,7 @@ class OtherCommands(commands.Cog):
 
     @commands.slash_command(
         name='help',
-        description='Получить описание команд бота.',
-        default_member_permissions=disnake.Permissions(8)
+        description='Описание команд бота'
     )
     async def help(self, inter: disnake.ApplicationCommandInteraction):
         """
@@ -55,20 +54,21 @@ class OtherCommands(commands.Cog):
         """
 
         emb = disnake.Embed(
-            description='Я умею получать от вас торренты игр и присылать вам, когда они вам понадобятся.\n\n'
-                        'Описание команд'
+            description='Я умею раздавать роли и вести статистику пользователей сервера.\n\n'
+                        'Описание команд',
+            color=disnake.Color.blue()
         )
 
         emb.add_field('Команда', '\n'.join(com.name for com in self.bot.slash_commands))
         emb.add_field('Описание', '\n'.join(com.description for com in self.bot.slash_commands))
 
-        await inter.response.send_message(embed=emb)
+        await inter.response.send_message(embed=emb, ephemeral=True)
 
         logger.info(f'[CALL] <@{inter.author.id}> /help')
 
     @commands.slash_command(
         name='ping',
-        description='Узнать задержку бота.',
+        description='Задержка бота',
     )
     async def ping(self, inter: disnake.ApplicationCommandInteraction):
         """
@@ -84,7 +84,7 @@ class OtherCommands(commands.Cog):
 
     @commands.slash_command(
         name='set_log_channel',
-        description='Выбрать канал лога для бота.',
+        description='Выбрать канал лога для бота',
         default_member_permissions=disnake.Permissions(8)
     )
     async def settings(self, inter: disnake.ApplicationCommandInteraction, channel: disnake.TextChannel):
@@ -110,7 +110,7 @@ class DistributionCommands(commands.Cog):
 
     @commands.slash_command(
         name='set_default_role',
-        description='Изменить стандартную роль для новых участников сервера.',
+        description='Изменить стандартную роль для новых участников сервера',
         default_member_permissions=disnake.Permissions(8)
     )
     async def set_default_role(self, inter: disnake.ApplicationCommandInteraction, role: disnake.Role):
@@ -143,7 +143,7 @@ class DistributionCommands(commands.Cog):
 
     @commands.slash_command(
         name='distribution_new_message',
-        description='Новое сообщение с автовыдачей ролей по эмодзи.',
+        description='Отправить сообщение с автовыдачей ролей по эмодзи',
         default_member_permissions=disnake.Permissions(8)
     )
     async def new_distribution(self, inter: disnake.ApplicationCommandInteraction):
@@ -174,7 +174,7 @@ class DistributionCommands(commands.Cog):
 
     @commands.slash_command(
         name='distribution_add_role',
-        description='Добавить роль к автовыдачи по эмодзи.',
+        description='Добавить роль к автовыдаче по эмодзи',
         default_member_permissions=disnake.Permissions(8)
     )
     async def add_role(self, inter: disnake.ApplicationCommandInteraction, role: disnake.Role,
@@ -210,7 +210,7 @@ class DistributionCommands(commands.Cog):
 
     @commands.slash_command(
         name='distribution_del_role',
-        description='Удалить роль из автовыдачи по эмодзи.',
+        description='Удалить роль из автовыдачи по эмодзи',
         default_member_permissions=disnake.Permissions(8)
     )
     async def del_role(self, inter: disnake.ApplicationCommandInteraction, role: disnake.Role):
@@ -235,7 +235,7 @@ class StatisticCommands(commands.Cog):
 
     @commands.slash_command(
         name='server_info',
-        description='Информация о сервере.',
+        description='Статистика сервера',
     )
     async def server_info(self, inter: disnake.ApplicationCommandInteraction):
         guild = inter.guild
@@ -260,7 +260,7 @@ class StatisticCommands(commands.Cog):
 
     @commands.slash_command(
         name='user_info',
-        description='Статистика пользователя.',
+        description='Статистика пользователя',
     )
     async def user_info(self, inter: disnake.ApplicationCommandInteraction, user: disnake.Member = None):
         if user is None:
@@ -295,7 +295,7 @@ class StatisticCommands(commands.Cog):
 
     @commands.slash_command(
         name='user_top',
-        description='Топ пользователей по количеству опыта.',
+        description='Топ пользователей по количеству опыта',
     )
     async def user_top(self, inter: disnake.ApplicationCommandInteraction):
         info = db.get_users(inter.guild_id)[:10]

@@ -113,8 +113,9 @@ class MainEvents(commands.Cog):
                                    'минут, пожалуйста подождите.')
 
                 emb = disnake.Embed(
-                    description='Я умею получать от вас торренты игр и присылать вам, когда они вам понадобятся.\n\n'
-                                'Описание команд'
+                    description='Я умею раздавать роли и вести статистику пользователей сервера.\n\n'
+                                'Описание команд',
+                    color=disnake.Color.gold()
                 )
 
                 emb.add_field('Команда', '\n'.join(com.name for com in self.bot.slash_commands))
