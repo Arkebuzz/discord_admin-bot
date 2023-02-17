@@ -112,10 +112,20 @@ class MainEvents(commands.Cog):
                                    'Сейчас я проведу анализ текущих сообщений на сервере, это может занять несколько '
                                    'минут, пожалуйста подождите.')
 
+                emb = disnake.Embed(
+                    description='Я умею получать от вас торренты игр и присылать вам, когда они вам понадобятся.\n\n'
+                                'Описание команд'
+                )
+
+                emb.add_field('Команда', '\n'.join(com.name for com in self.bot.slash_commands))
+                emb.add_field('Описание', '\n'.join(com.description for com in self.bot.slash_commands))
+
+                await channel.send(embed=emb)
+
                 await channel.send('Если вам нужны оповещения о присоединении/уходе участников выберите для них '
                                    'канал командой /set_log_channel')
-
                 break
+
             except disnake.errors.Forbidden:
                 continue
 
