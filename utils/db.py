@@ -21,6 +21,7 @@ class DB:
 
         self.cur.execute('''CREATE TABLE IF NOT EXISTS guilds(
                        id INTEGER PRIMARY KEY,
+                       analyze INTEGER,
                        log_channel INTEGER,
                        default_role INTEGER,
                        message_rules INTEGER);
@@ -28,15 +29,15 @@ class DB:
 
         self.cur.execute('''CREATE TABLE IF NOT EXISTS reaction4role(
                        guild_id INTEGER,
-                       role INTEGER,
-                       reaction INTEGER,
-                       PRIMARY KEY(role, reaction),
+                       role INTEGER PRIMARY KEY,
+                       reaction INTEGER UNIQUE,
                        FOREIGN KEY(guild_id) REFERENCES guilds(id) ON DELETE CASCADE);
                        ''')
 
         self.cur.execute('''CREATE TABLE IF NOT EXISTS users(
                        guild_id INTEGER,
                        user_id INTEGER,
+                       user_name TEXT,
                        experience INTEGER,
                        messages INTEGER,
                        num_charact INTEGER,
@@ -46,34 +47,40 @@ class DB:
 
         self.conn.commit()
 
-    def update_guild_settings(self, guild_id, log_id=None, role_id=None, message_id=None):
+    def update_guild_settings(self, guild_id, analyze=None, log_id=None, role_id=None, message_id=None):
         """
         Обновляет лог-канал и сообщение с автораздачей на сервере.
 
         :param guild_id: ID сервера.
+        :param analyze: Сервер проанализирован?
         :param log_id: ID лог-канала.
         :param role_id: ID роли по умолчанию.
         :param message_id: ID сообщения с автораздачей ролей.
         :return:
         """
 
-        if log_id is None and role_id is None and message_id is None:
-            self.cur.execute('INSERT INTO guilds VALUES(?, NULL, NULL, NULL) '
+        if log_id is None and role_id is None and message_id is None and analyze is None:
+            self.cur.execute('INSERT INTO guilds VALUES(?, 0, NULL, NULL, NULL) '
                              'ON CONFLICT (id) DO NOTHING',
                              (guild_id,))
 
+        if analyze is not None:
+            self.cur.execute('INSERT INTO guilds VALUES(?, ?, NULL, NULL, NULL) '
+                             'ON CONFLICT (id) DO UPDATE SET analyze = ?',
+                             (guild_id, analyze, analyze))
+
         if log_id is not None:
-            self.cur.execute('INSERT INTO guilds VALUES(?, ?, NULL, NULL) '
+            self.cur.execute('INSERT INTO guilds VALUES(?, 0, ?, NULL, NULL) '
                              'ON CONFLICT (id) DO UPDATE SET log_channel = ?',
                              (guild_id, log_id, log_id))
 
         if role_id is not None:
-            self.cur.execute('INSERT INTO guilds VALUES(?, NULL, ?, NULL) '
+            self.cur.execute('INSERT INTO guilds VALUES(?, 0, NULL, ?, NULL) '
                              'ON CONFLICT (id) DO UPDATE SET default_role = ?',
                              (guild_id, role_id, role_id))
 
         if message_id is not None:
-            self.cur.execute('INSERT INTO guilds VALUES(?, NULL, NULL, ?) '
+            self.cur.execute('INSERT INTO guilds VALUES(?, 0, NULL, NULL, ?) '
                              'ON CONFLICT (id) DO UPDATE SET message_rules = ?',
                              (guild_id, message_id, message_id))
 
@@ -117,6 +124,8 @@ class DB:
         :return:
         """
 
+        self.update_guild_settings(guild_id)
+
         self.cur.execute('INSERT INTO reaction4role VALUES(?, ?, ?) '
                          'ON CONFLICT DO UPDATE SET role = ?, reaction = ?',
                          (guild_id, role_id, reaction, role_id, reaction))
@@ -147,23 +156,27 @@ class DB:
 
         self.conn.commit()
 
-    def update_user(self, guild_id, user_id, len_message):
+    def update_user(self, guild_id, user_id, user_name, len_message=0, num_attach=0):
         """
         Обновляет статистику пользователя на сервере.
 
         :param guild_id:
         :param user_id:
+        :param user_name:
         :param len_message:
+        :param num_attach:
         :return:
         """
 
         e = 2.718281828459045
-        exp = len_message / 100
-        exp = int(30 * (e ** exp - e ** -exp) / (e ** exp + e ** -exp))
+        l_m = len_message / 100
+        exp = int(30 * (e ** l_m - e ** -l_m) / (e ** l_m + e ** -l_m))
 
-        self.cur.execute('INSERT INTO users VALUES(?, ?, ?, 1, ?) ON CONFLICT DO UPDATE '
-                         'SET experience = experience + ?, num_charact = num_charact + ?, messages = messages + 1',
-                         (guild_id, user_id, exp, len_message, exp, len_message))
+        exp += num_attach * 7
+
+        self.cur.execute('INSERT INTO users VALUES(?, ?, ?, ?, 1, ?) ON CONFLICT DO UPDATE '
+                         'SET experience = experience + ?, messages = messages + 1, num_charact = num_charact + ?',
+                         (guild_id, user_id, user_name, exp, len_message, exp, len_message))
 
         self.conn.commit()
 
@@ -196,9 +209,3 @@ class DB:
         self.cur.execute('DELETE FROM users WHERE guild_id = ? AND user_id = ?', (guild_id, user_id))
 
         self.conn.commit()
-
-
-# con = sqlite3.connect('../data/guilds.db')
-# cur = con.cursor()
-# cur.execute('UPDATE users SET experience = experience / 3')
-# con.commit()

@@ -1,11 +1,10 @@
+import asyncio
+
 import disnake
 from disnake.ext import commands
 
-from config import IDS
-from utils.db import DB
+from main import db
 from utils.logger import logger
-
-db = DB()
 
 
 async def refresh(bot):
@@ -16,51 +15,40 @@ async def refresh(bot):
     :return:
     """
 
-    logger.info('[START] guilds refresh')
+    while True:
+        logger.info('[START] guilds refresh')
 
-    cur_guilds = [g.id for g in bot.guilds]
-    db_guilds = [g[0] for g in db.get_guilds()]
+        cur_guilds = [g.id for g in bot.guilds]
+        db_guilds = [g[0] for g in db.get_guilds() if g[1]]
 
-    if IDS != cur_guilds:
-        ids = [str(g.id) for g in bot.guilds]
+        if db_guilds != cur_guilds:
+            for guild_id in set(db_guilds) - set(cur_guilds):
+                db.delete_guild(guild_id)
+                logger.warning(f'[IN PROGRESS] guilds refresh : bot not in {id} but it`s in DB')
 
-        with open('config.py', 'r') as f:
-            text = ''
-            for line in f:
-                if 'IDS' in line:
-                    text += 'IDS = [' + ', '.join(ids) + ']\n'
-                else:
-                    text += line
+            for guild_id in set(cur_guilds) - set(db_guilds):
+                logger.info(f'[IN PROGRESS] guilds refresh : {guild_id} not in DB -> starting messages analyze')
 
-        with open('config.py', 'w') as f:
-            f.write(text)
+                db.update_guild_settings(guild_id)
 
-        import os
-        import sys
+                for ch in bot.get_guild(guild_id).text_channels:
+                    try:
+                        async for mes in ch.history(limit=10000):
+                            if mes.author.id != bot.user.id:
+                                name = mes.author.name.encode('windows-1251', 'replace').decode('windows-1251')
+                                db.update_user(mes.guild.id, mes.author.id, name, len(mes.content),
+                                               len(mes.attachments))
 
-        logger.warning(f'[FINISHED] guilds refresh in config : BOT RESTARTING')
-        os.execv(sys.executable, [sys.executable, sys.argv[0]])
+                    except disnake.errors.Forbidden:
+                        continue
 
-    if db_guilds != cur_guilds:
-        for guild_id in set(db_guilds) - set(cur_guilds):
-            db.delete_guild(guild_id)
-            logger.warning(f'[IN PROGRESS] guilds refresh : bot not in {id} but it`s in DB')
+                db.update_guild_settings(guild_id, analyze=1)
 
-        for guild_id in set(cur_guilds) - set(db_guilds):
-            logger.info(f'[IN PROGRESS] guilds refresh : {guild_id} not in DB -> starting messages analyze')
+                logger.info(f'[IN PROGRESS] guilds refresh : {guild_id} not in DB -> messages are analyzed')
 
-            db.update_guild_settings(guild_id)
+        logger.info('[FINISHED] all guilds refresh')
 
-            for ch in bot.get_guild(guild_id).text_channels:
-                try:
-                    async for mes in ch.history(limit=10000):
-                        db.update_user(guild_id, mes.author.id, len(mes.content))
-                except disnake.errors.Forbidden:
-                    continue
-
-            logger.info(f'[IN PROGRESS] guilds refresh : {guild_id} not in DB -> messages are analyzed')
-
-    logger.info('[FINISHED] all guilds refresh')
+        await asyncio.sleep(3600)
 
 
 class MainEvents(commands.Cog):
@@ -77,21 +65,6 @@ class MainEvents(commands.Cog):
         :return:
         """
 
-        emb = disnake.Embed(title=f'Информация о боте "{self.bot.user.name}"', color=disnake.Colour.blue())
-        emb.set_thumbnail(self.bot.user.avatar)
-        emb.add_field(name='Версия:', value='beta v0.4.1', inline=False)
-        emb.add_field(name='Описание:', value='Бот создан для упрощения работы админов.', inline=False)
-        emb.add_field(name='Что нового:',
-                      value='```diff\nv0.4\n'
-                            '+Добавлена статистика участников сервера.\n'
-                            '+Добавлена статистика сервера.\n'
-                            '```', inline=False)
-        emb.set_footer(text='@Arkebuzz#7717',
-                       icon_url='https://cdn.discordapp.com/avatars/542244057947308063/'
-                                '4b8f2972eb7475f44723ac9f84d9c7ec.png?size=1024')
-
-        # await self.bot.get_channel(1075105989818339359).send(embed=emb)
-
         logger.info('Bot started')
         await refresh(self.bot)
 
@@ -106,11 +79,14 @@ class MainEvents(commands.Cog):
 
         logger.info(f'[NEW GUILD] <{guild.id}>')
 
+        db.update_guild_settings(guild.id)
+
         for channel in guild.text_channels:
             try:
                 await channel.send('Здравствуйте, я очень рад, что вы добавили меня на сервер.\n'
-                                   'Сейчас я проведу анализ текущих сообщений на сервере, это может занять несколько '
-                                   'минут, пожалуйста подождите.')
+                                   'В течении часа я проведу анализ текущих сообщений на сервере,'
+                                   ' пожалуйста подождите.\n'
+                                   'После этого вы сможете увидеть свою статистику и статистику сервера.')
 
                 emb = disnake.Embed(
                     description='Я умею раздавать роли и вести статистику пользователей сервера.\n\n'
@@ -125,12 +101,13 @@ class MainEvents(commands.Cog):
 
                 await channel.send('Если вам нужны оповещения о присоединении/уходе участников выберите для них '
                                    'канал командой /set_log_channel')
+
+                await channel.send('Рекомендуется вызвать команду /check_permissions, чтобы удостовериться, '
+                                   'имеет ли бот необходимые права.')
                 break
 
             except disnake.errors.Forbidden:
                 continue
-
-        await refresh(self.bot)
 
     @commands.Cog.listener()
     async def on_guild_remove(self, guild: disnake.Intents.guilds):
@@ -142,8 +119,6 @@ class MainEvents(commands.Cog):
         """
 
         logger.info(f'[DEL GUILD] <{guild.id}>')
-
-        await refresh(self.bot)
 
 
 class ReactionEvents(commands.Cog):
@@ -229,11 +204,13 @@ class MessageEvents(commands.Cog):
 
     @commands.Cog.listener()
     async def on_message(self, mes: disnake.Message):
-        if mes.author.id == self.bot.user.id:
+        guild = db.get_guilds(mes.guild.id)
+
+        if not guild or not guild[0][1] or mes.author.id == self.bot.user.id:
             return
 
-        db.update_guild_settings(mes.guild.id)
-        db.update_user(mes.guild.id, mes.author.id, len(mes.content))
+        name = mes.author.name.encode('windows-1251', 'replace').decode('windows-1251')
+        db.update_user(mes.guild.id, mes.author.id, name, len(mes.content), len(mes.attachments))
 
 
 def setup(bot: commands.InteractionBot):

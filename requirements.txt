@@ -1,2 +1,3 @@
-disnake~=2.8.0
+disnake~=2.8.1
 emoji~=2.2.0
+tabulate~=0.9.0
