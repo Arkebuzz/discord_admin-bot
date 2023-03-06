@@ -16,7 +16,7 @@ class DB:
         """
         Создаёт БД.
 
-        :return:
+        :return: None
         """
 
         self.cur.execute('''CREATE TABLE IF NOT EXISTS guilds(
@@ -41,8 +41,31 @@ class DB:
                        experience INTEGER,
                        messages INTEGER,
                        num_charact INTEGER,
+                       num_voting INTEGER,
+                       num_votes INTEGER,
                        PRIMARY KEY(guild_id, user_id),
                        FOREIGN KEY(guild_id) REFERENCES guilds(id) ON DELETE CASCADE);
+                       ''')
+
+        self.cur.execute('''CREATE TABLE IF NOT EXISTS voting(
+                       id INTEGER PRIMARY KEY,
+                       guild_id INTEGER,
+                       channel_id INTEGER,
+                       user_id INTEGER,
+                       time INTEGER,
+                       question TEXT,
+                       min_choice INTEGER,
+                       max_choice INTEGER,
+                       choices TEXT,
+                       FOREIGN KEY(guild_id) REFERENCES guilds(id) ON DELETE CASCADE);
+                       ''')
+
+        self.cur.execute('''CREATE TABLE IF NOT EXISTS votes(
+                       voting_id INTEGER,
+                       user_id INTEGER,
+                       choice TEXT,
+                       PRIMARY KEY(voting_id, user_id, choice),
+                       FOREIGN KEY(voting_id) REFERENCES voting(id) ON DELETE CASCADE);
                        ''')
 
         self.conn.commit()
@@ -56,7 +79,7 @@ class DB:
         :param log_id: ID лог-канала.
         :param role_id: ID роли по умолчанию.
         :param message_id: ID сообщения с автораздачей ролей.
-        :return:
+        :return: None
         """
 
         if log_id is None and role_id is None and message_id is None and analyze is None:
@@ -91,7 +114,7 @@ class DB:
         Возвращает сервера бота c введенным ID, если ID не передан, то возвращает все сервера.
 
         :param guild_id: ID сервера.
-        :return:
+        :return: [[id, analyze, log_channel, default_role, message_rules]]
         """
 
         if guild_id is None:
@@ -108,7 +131,7 @@ class DB:
         Удаление сервер из БД.
 
         :param guild_id: ID сервера.
-        :return:
+        :return: None
         """
 
         self.cur.execute('DELETE FROM guilds WHERE id = ?;', (guild_id,))
@@ -118,10 +141,10 @@ class DB:
         """
         Обновляет связку роль - реакция на сервере.
 
-        :param guild_id:
-        :param role_id:
-        :param reaction:
-        :return:
+        :param guild_id: ID сервера.
+        :param role_id: ID роли.
+        :param reaction: Эмодзи.
+        :return: None
         """
 
         self.update_guild_settings(guild_id)
@@ -136,9 +159,11 @@ class DB:
         """
         Возвращает все связки роль - реакция на сервере.
 
-        :param guild_id:
-        :return:
+        :param guild_id: ID сервера.
+        :return: [[role, reaction]]
         """
+
+        self.update_guild_settings(guild_id)
 
         self.cur.execute('SELECT role, reaction FROM reaction4role WHERE guild_id = ?', (guild_id,))
         return self.cur.fetchall()
@@ -147,36 +172,42 @@ class DB:
         """
         Удаляет связку роль - реакция с id роли на сервере.
 
-        :param guild_id:
-        :param role_id:
-        :return:
+        :param guild_id: ID сервера.
+        :param role_id: ID роли.
+        :return: None
         """
 
         self.cur.execute('DELETE FROM reaction4role WHERE guild_id = ? AND role = ?', (guild_id, role_id))
 
         self.conn.commit()
 
-    def update_user(self, guild_id, user_id, user_name, len_message=0, num_attach=0):
+    def update_user(self, guild_id, user_id, user_name, len_message=0, num_attach=0, voting=(0, 0)):
         """
         Обновляет статистику пользователя на сервере.
 
-        :param guild_id:
-        :param user_id:
-        :param user_name:
-        :param len_message:
-        :param num_attach:
-        :return:
+        :param guild_id: ID сервера.
+        :param user_id: ID пользователя.
+        :param user_name: Имя пользователя.
+        :param len_message: Длина сообщения.
+        :param num_attach: Количество вложений.
+        :param voting: (int(bool), int(bool)) [0] - новое голосование, [1] - новый голос.
+        :return: None
         """
+
+        self.update_guild_settings(guild_id)
 
         e = 2.718281828459045
         l_m = len_message / 100
         exp = int(30 * (e ** l_m - e ** -l_m) / (e ** l_m + e ** -l_m))
 
         exp += num_attach * 7
+        exp += voting[0] * 30
+        exp += voting[1] * 5
 
-        self.cur.execute('INSERT INTO users VALUES(?, ?, ?, ?, 1, ?) ON CONFLICT DO UPDATE '
-                         'SET experience = experience + ?, messages = messages + 1, num_charact = num_charact + ?',
-                         (guild_id, user_id, user_name, exp, len_message, exp, len_message))
+        self.cur.execute('INSERT INTO users VALUES(?, ?, ?, ?, 1, ?, ?, ?) ON CONFLICT DO UPDATE '
+                         'SET experience = experience + ?, messages = messages + 1, num_charact = num_charact + ?,'
+                         'num_voting = num_voting + ?, num_votes = num_votes + ?',
+                         (guild_id, user_id, user_name, exp, len_message, *voting, exp, len_message, *voting))
 
         self.conn.commit()
 
@@ -184,9 +215,9 @@ class DB:
         """
         Возвращает информацию о пользователе на сервере.
 
-        :param guild_id:
-        :param user_id:
-        :return:
+        :param guild_id: ID сервера.
+        :param user_id: ID пользователя.
+        :return: [[guild_id, user_id, user_name, experience, messages, num_charact, num_voting, num_votes]]
         """
 
         if user_id is not None:
@@ -201,11 +232,97 @@ class DB:
         """
         Удаляет пользователя с сервера.
 
-        :param guild_id:
-        :param user_id:
-        :return:
+        :param guild_id: ID сервера.
+        :param user_id: ID пользователя.
+        :return: None
         """
 
         self.cur.execute('DELETE FROM users WHERE guild_id = ? AND user_id = ?', (guild_id, user_id))
 
         self.conn.commit()
+
+    def new_voting(self, mes_id, channel_id, user_info, question, time, min_choices, max_choices, answers):
+        """
+        Создаёт новое голосование.
+
+        :param mes_id: ID сообщения с голосованием.
+        :param channel_id: ID канала.
+        :param user_info: (guild_id, user_id, user_name)
+        :param question: Название голосования.
+        :param time: Время, когда вопрос завершится (секунды).
+        :param min_choices: Минимум выборов.
+        :param max_choices: Максимум выборов.
+        :param answers: Варианты ответов.
+        :return: None
+        """
+
+        self.update_guild_settings(user_info[0])
+        self.update_user(*user_info, voting=(1, 0))
+
+        self.cur.execute('INSERT INTO voting VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?)',
+                         (mes_id, user_info[0], channel_id, user_info[1], time, question, min_choices, max_choices,
+                          '!|?'.join(answers)))
+
+        self.conn.commit()
+
+    def get_voting(self, mes_id=None):
+        """
+        Возвращает все голосования.
+
+        :param mes_id: ID сообщения с голосованием (ID голосования).
+        :return: [[id, guild_id, channel_id, user_id, time, question, min_choice, max_choice, choices]]
+        """
+
+        if mes_id is not None:
+            self.cur.execute('SELECT * FROM voting WHERE id = ?', (mes_id, ))
+        else:
+            self.cur.execute('SELECT * FROM voting')
+
+        return self.cur.fetchall()
+
+    def delete_voting(self, mes_id):
+        """
+        Удалить голосование по ID.
+
+        :param mes_id: ID сообщения с голосованием (ID голосования).
+        :return: None.
+        """
+
+        self.cur.execute('DELETE FROM voting WHERE id = ?', (mes_id, ))
+
+        self.conn.commit()
+
+    def new_vote(self, mes_id, user_info, choice):
+        """
+        Принимает новый голос.
+
+        :param mes_id: ID сообщения с голосованием (ID голосования).
+        :param user_info: (guild_id, user_id, user_name) проголосовавшего.
+        :param choice: [str] массив с вариантами ответов.
+        :return:
+        """
+
+        self.cur.execute('SELECT * FROM votes WHERE voting_id = ? AND user_id = ?', (mes_id, user_info[1]))
+
+        if self.cur.fetchall():
+            self.cur.execute('DELETE FROM votes WHERE voting_id = ? AND user_id = ?', (mes_id, user_info[1]))
+        else:
+            self.update_user(*user_info, voting=(0, 1))
+
+        self.cur.executemany('INSERT INTO votes VALUES(?, ?, ?)',
+                             ((mes_id, user_info[1], ch) for ch in choice))
+
+        self.conn.commit()
+
+    def get_votes(self, mes_id):
+        """
+        Получить все голоса определенного голосования.
+
+        :param mes_id: ID сообщения с голосованием (ID голосования).
+        :return: [[voting_id, user_id, choice]]
+        """
+
+        self.cur.execute('SELECT * FROM votes WHERE voting_id = ?', (mes_id, ))
+
+        return self.cur.fetchall()
+

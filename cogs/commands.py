@@ -1,3 +1,5 @@
+import time
+
 import disnake
 import emoji
 
@@ -5,6 +7,7 @@ from disnake.ext import commands
 from tabulate import tabulate
 
 from main import db
+from cogs.buttons import Voting
 from utils.logger import logger
 
 
@@ -26,19 +29,17 @@ class OtherCommands(commands.Cog):
 
         emb = disnake.Embed(title=f'Информация о боте "{self.bot.user.name}"', color=disnake.Colour.gold())
         emb.set_thumbnail(self.bot.user.avatar)
-        emb.add_field(name='Версия:', value='beta v0.5')
+        emb.add_field(name='Версия:', value='beta v0.6')
         emb.add_field(name='Серверов:', value=len(self.bot.guilds))
         emb.add_field(name='Описание:', value='Бот создан для упрощения работы админов.', inline=False)
         emb.add_field(name='Что нового:',
-                      value='```diff\nv0.5\n'
-                            '+Создана функция проверки разрешений бота.\n'
-                            '+Топ игроков переделан для телефонов.\n'
-                            '+Теперь опыт начисляется за вложения сообщений (фото, гифки и т.д.)\n'
-                            '+Открыт исходный код.\n'
-                            '~Исправлено ошибок.\n'
+                      value='```diff\nv0.6\n'
+                            '+Добавлены голосования.\n'
+                            '+Теперь опыт начисляется за использование голосований.\n'
+                            '~Исправление ошибок.\n'
                             '```', inline=False)
         emb.set_footer(text='@Arkebuzz#7717\n'
-                            'https://github.com/Arkebuzz/discord_admin-bot/blob/main/cogs/events.py',
+                            'https://github.com/Arkebuzz/discord_admin-bot',
                        icon_url='https://cdn.discordapp.com/avatars/542244057947308063/'
                                 '4b8f2972eb7475f44723ac9f84d9c7ec.png?size=1024')
 
@@ -369,13 +370,114 @@ class StatisticCommands(commands.Cog):
         emb.add_field(
             '',
             '```' +
-            tabulate([(user[2][:18], user[3]) for user in info],
-                     ['Участник', 'Опыт'], 'rounded_outline') +
+            tabulate([(user[2], user[3]) for user in info],
+                     ['Участник', 'Опыт'], 'fancy_grid', maxcolwidths=[18, None]) +
             '```'
         )
 
         await inter.response.send_message(embed=emb)
         logger.info(f'[CALL] <@{inter.author.id}> /user_top')
+
+
+class VotingCommands(commands.Cog):
+    def __init__(self, bot):
+        self.bot: commands.InteractionBot = bot
+
+    @commands.slash_command(
+        name='new_voting',
+        description='Создать голосование',
+    )
+    async def voting(self, inter: disnake.ApplicationCommandInteraction,
+                     question: str = commands.Param(description='Вопрос голосования'),
+                     timer: str = commands.Param(
+                         description='Время на голосование (1m/1h/1d)',
+                         default='1d', min_length=2
+                     ),
+                     min_choices: int = commands.Param(
+                         description='Минимальное число вариантов, которое может выбрать голосующий',
+                         default=1, min_value=1, max_value=10
+                     ),
+                     max_choices: int = commands.Param(
+                         description='Максимальное число вариантов, которое может выбрать голосующий',
+                         default=1, min_value=1, max_value=10
+                     ),
+                     answer0: str | None = commands.Param(description='Вариант ответа', default=None),
+                     answer1: str | None = commands.Param(description='Вариант ответа', default=None),
+                     answer2: str | None = commands.Param(description='Вариант ответа', default=None),
+                     answer3: str | None = commands.Param(description='Вариант ответа', default=None),
+                     answer4: str | None = commands.Param(description='Вариант ответа', default=None),
+                     answer5: str | None = commands.Param(description='Вариант ответа', default=None),
+                     answer6: str | None = commands.Param(description='Вариант ответа', default=None),
+                     answer7: str | None = commands.Param(description='Вариант ответа', default=None),
+                     answer8: str | None = commands.Param(description='Вариант ответа', default=None),
+                     answer9: str | None = commands.Param(description='Вариант ответа', default=None),
+                     ):
+        """
+        Слэш-команда, создаёт новое голосование.
+        """
+
+        await inter.response.defer()
+
+        sl = {'m': 60, 'h': 3600, 'd': 86400}
+
+        try:
+            timer = time.time() + int(timer[:-1]) * sl[timer[-1]]
+
+            if min_choices > max_choices:
+                raise NameError
+        except (ValueError, TypeError, KeyError):
+            emb = disnake.Embed(title='Не правильно указано время голосования!', color=disnake.Color.red())
+            await inter.response.send_message(embed=emb, ephemeral=True)
+            return
+        except NameError:
+            emb = disnake.Embed(title='Не правильно указаны минимальное и максимальное числа вариантов, '
+                                      'которые может выбрать голосующий!', color=disnake.Color.red())
+            await inter.response.send_message(embed=emb, ephemeral=True)
+            return
+
+        answers = []
+
+        if answer0:
+            answers.append(answer0)
+        if answer1:
+            answers.append(answer1)
+        if answer2:
+            answers.append(answer2)
+        if answer3:
+            answers.append(answer3)
+        if answer4:
+            answers.append(answer4)
+        if answer5:
+            answers.append(answer5)
+        if answer6:
+            answers.append(answer6)
+        if answer7:
+            answers.append(answer7)
+        if answer8:
+            answers.append(answer8)
+        if answer9:
+            answers.append(answer9)
+
+        if not answers:
+            answers = ['Да', 'Нет']
+
+        emb = disnake.Embed(title=question, color=disnake.Color.gold())
+        emb.add_field('Завершится', f'<t:{int(timer)}:R>')
+        emb.add_field('Вариантов', 'от ' + str(min_choices) + ' до ' + str(max_choices))
+        emb.add_field('Варианты:', '\n'.join(answers), inline=False)
+        emb.set_footer(text=inter.author, icon_url=inter.author.avatar)
+
+        msg = await inter.original_message()
+
+        db.new_voting(
+            msg.id, inter.channel_id, (inter.guild_id, inter.author.id, inter.author.name),
+            question, timer, min_choices, max_choices, answers
+        )
+
+        view = Voting(msg.id, question, answers, timer - time.time(), min_choices, max_choices)
+        await inter.edit_original_response(embed=emb, view=view)
+
+        logger.info(f'[CALL] <@{inter.author.id}> /new_voting : question {question}')
 
 
 def setup(bot: commands.Bot):
@@ -384,3 +486,4 @@ def setup(bot: commands.Bot):
     bot.add_cog(OtherCommands(bot))
     bot.add_cog(DistributionCommands(bot))
     bot.add_cog(StatisticCommands(bot))
+    bot.add_cog(VotingCommands(bot))
