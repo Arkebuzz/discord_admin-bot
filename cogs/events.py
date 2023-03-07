@@ -217,12 +217,12 @@ class MemberEvents(commands.Cog):
         if guild:
             guild = guild[0]
 
-            if guild[1]:
-                ch = self.bot.get_channel(guild[1])
+            if guild[2]:
+                ch = self.bot.get_channel(guild[2])
                 await ch.send(f'<@{member.id}> присоединился к серверу.')
 
-            if guild[2]:
-                await member.add_roles(guild[2])
+            if guild[3]:
+                await member.add_roles(guild[3])
 
             logger.info(f'[NEW USER] <{member.id}>')
 
@@ -230,8 +230,8 @@ class MemberEvents(commands.Cog):
     async def on_raw_member_remove(self, payload: disnake.RawGuildMemberRemoveEvent):
         guild = db.get_guilds(payload.guild_id)
 
-        if guild and guild[0][1]:
-            ch = self.bot.get_channel(guild[0][1])
+        if guild and guild[0][2]:
+            ch = self.bot.get_channel(guild[0][2])
             await ch.send(f'<@{payload.user.id}> покинул сервер.')
 
             logger.info(f'[DEL USER] <{payload.user.id}>')
