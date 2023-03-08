@@ -29,7 +29,7 @@ class OtherCommands(commands.Cog):
 
         emb = disnake.Embed(title=f'Информация о боте "{self.bot.user.name}"', color=disnake.Colour.gold())
         emb.set_thumbnail(self.bot.user.avatar)
-        emb.add_field(name='Версия:', value='beta v0.6')
+        emb.add_field(name='Версия:', value='beta v0.6.2')
         emb.add_field(name='Серверов:', value=len(self.bot.guilds))
         emb.add_field(name='Описание:', value='Бот создан для упрощения работы админов.', inline=False)
         emb.add_field(name='Что нового:',
@@ -60,12 +60,12 @@ class OtherCommands(commands.Cog):
 
         emb = disnake.Embed(
             title='Помощь',
-            description='Я умею раздавать роли и вести статистику пользователей сервера.\n\n',
+            description='Я умею раздавать роли и вести статистику пользователей сервера.\n\nСписок команд:',
             color=disnake.Color.blue()
         )
 
-        emb.add_field('Команда', '\n'.join(com.name for com in self.bot.slash_commands))
-        emb.add_field('Описание', '\n'.join(com.description for com in self.bot.slash_commands))
+        for com in self.bot.slash_commands:
+            emb.add_field('/' + com.name, com.description + '.', inline=False)
 
         await inter.response.send_message(embed=emb, ephemeral=True)
 
@@ -366,7 +366,6 @@ class StatisticCommands(commands.Cog):
         info = db.get_users(inter.guild_id)[:10]
 
         emb = disnake.Embed(title=f'Топ пользователей', colour=disnake.Colour.gold())
-
         emb.add_field(
             '',
             '```' +

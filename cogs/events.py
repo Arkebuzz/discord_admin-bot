@@ -8,6 +8,27 @@ from main import db
 from utils.logger import logger
 
 
+async def add_guild2db(bot, guild_id):
+    logger.info(f'[IN PROGRESS] guilds refresh : {guild_id} not in DB -> starting messages analyze')
+
+    db.update_guild_settings(guild_id)
+
+    for ch in bot.get_guild(guild_id).text_channels:
+        try:
+            async for mes in ch.history(limit=10000):
+                if mes.author.id != bot.user.id:
+                    name = mes.author.name.encode('windows-1251', 'replace').decode('windows-1251')
+                    db.update_user(mes.guild.id, mes.author.id, name, len(mes.content),
+                                   len(mes.attachments))
+
+        except disnake.errors.Forbidden:
+            continue
+
+    db.update_guild_settings(guild_id, analyze=1)
+
+    logger.info(f'[IN PROGRESS] guilds refresh : {guild_id} not in DB -> messages are analyzed')
+
+
 async def refresh(bot: commands.InteractionBot):
     """
     Обновление БД и config.py бота.
@@ -16,39 +37,20 @@ async def refresh(bot: commands.InteractionBot):
     :return:
     """
 
-    while True:
-        logger.debug('[START] guilds refresh')
+    logger.debug('[START] guilds refresh')
 
-        cur_guilds = [g.id for g in bot.guilds]
-        db_guilds = [g[0] for g in db.get_guilds() if g[1]]
+    cur_guilds = [g.id for g in bot.guilds]
+    db_guilds = [g[0] for g in db.get_guilds() if g[1]]
 
-        if db_guilds != cur_guilds:
-            for guild_id in set(db_guilds) - set(cur_guilds):
-                db.delete_guild(guild_id)
-                logger.warning(f'[IN PROGRESS] guilds refresh : bot not in {id} but it`s in DB')
+    if db_guilds != cur_guilds:
+        for guild_id in set(db_guilds) - set(cur_guilds):
+            db.delete_guild(guild_id)
+            logger.warning(f'[IN PROGRESS] guilds refresh : bot not in {db_guilds} but it`s in DB')
 
-            for guild_id in set(cur_guilds) - set(db_guilds):
-                logger.info(f'[IN PROGRESS] guilds refresh : {guild_id} not in DB -> starting messages analyze')
+        for guild_id in set(cur_guilds) - set(db_guilds):
+            await add_guild2db(bot, guild_id)
 
-                db.update_guild_settings(guild_id)
-
-                for ch in bot.get_guild(guild_id).text_channels:
-                    try:
-                        async for mes in ch.history(limit=10000):
-                            if mes.author.id != bot.user.id:
-                                name = mes.author.name.encode('windows-1251', 'replace').decode('windows-1251')
-                                db.update_user(mes.guild.id, mes.author.id, name, len(mes.content),
-                                               len(mes.attachments))
-
-                    except disnake.errors.Forbidden:
-                        continue
-
-                db.update_guild_settings(guild_id, analyze=1)
-
-                logger.info(f'[IN PROGRESS] guilds refresh : {guild_id} not in DB -> messages are analyzed')
-
-        logger.debug('[FINISHED] all guilds refresh')
-        await asyncio.sleep(3600)
+    logger.debug('[FINISHED] all guilds refresh')
 
 
 async def check_voting_timeout(bot: commands.InteractionBot):
@@ -81,7 +83,11 @@ async def check_voting_timeout(bot: commands.InteractionBot):
                 for key, progress, info in stat:
                     emb.add_field(key + ' ' + info, progress, inline=False)
 
-                await bot.get_channel(voting[2]).get_partial_message(voting[0]).edit(embed=emb, view=None)
+                try:
+                    await bot.get_channel(voting[2]).get_partial_message(voting[0]).edit(embed=emb, view=None)
+                except disnake.errors:
+                    logger.warning(f'[IN PROGRESS] deleting voting - question: {voting[5]} message was deleted')
+
                 db.delete_voting(voting[0])
 
                 logger.info(f'[IN PROGRESS] deleted voting - question: {voting[5]}')
@@ -106,7 +112,7 @@ class MainEvents(commands.Cog):
 
         logger.info('Bot started')
 
-        asyncio.ensure_future(refresh(self.bot))
+        await refresh(self.bot)
         asyncio.ensure_future(check_voting_timeout(self.bot))
 
     @commands.Cog.listener()
@@ -120,14 +126,12 @@ class MainEvents(commands.Cog):
 
         logger.info(f'[NEW GUILD] <{guild.id}>')
 
-        db.update_guild_settings(guild.id)
-
         for channel in guild.text_channels:
             try:
                 await channel.send('Здравствуйте, я очень рад, что вы добавили меня на сервер.\n'
-                                   'В течении часа я проведу анализ текущих сообщений на сервере,'
-                                   ' пожалуйста подождите.\n'
-                                   'После этого вы сможете увидеть свою статистику и статистику сервера.')
+                                   'Сейчас я проведу анализ текущих сообщений на сервере, это займёт несколько минут.\n'
+                                   'Вы можете пользоваться ботом в течении этого времени, '
+                                   'просто статистика пользователей и сервера может выводиться некорректно.')
 
                 emb = disnake.Embed(
                     description='Я умею раздавать роли и вести статистику пользователей сервера.\n\n'
@@ -140,11 +144,13 @@ class MainEvents(commands.Cog):
 
                 await channel.send(embed=emb)
 
+                await add_guild2db(self.bot, guild.id)
+
+                await channel.send('Анализ сообщений завершён.')
                 await channel.send('Если вам нужны оповещения о присоединении/уходе участников выберите для них '
                                    'канал командой /set_log_channel')
-
                 await channel.send('Рекомендуется вызвать команду /check_permissions, чтобы удостовериться, '
-                                   'имеет ли бот необходимые права.')
+                                   'что бот имеет необходимые права.')
                 break
 
             except disnake.errors.Forbidden:
@@ -158,6 +164,9 @@ class MainEvents(commands.Cog):
         :param guild:
         :return:
         """
+
+        db.delete_guild(guild.id)
+        logger.warning(f'[IN PROGRESS] guilds refresh : bot not in {guild.id} but it`s in DB')
 
         logger.info(f'[DEL GUILD] <{guild.id}>')
 

@@ -1,4 +1,5 @@
 import logging
+from logging import Logger
 
 from config import PATH_LOG
 
@@ -10,7 +11,7 @@ file_handler.setFormatter(formatting)
 console_handler = logging.StreamHandler()
 console_handler.setFormatter(formatting)
 
-logger = logging.getLogger('KBAHT')
+logger: Logger = logging.getLogger('KBAHT')
 logger.setLevel(logging.DEBUG)
 logger.addHandler(file_handler)
 logger.addHandler(console_handler)
