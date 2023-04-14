@@ -12,6 +12,6 @@ console_handler = logging.StreamHandler()
 console_handler.setFormatter(formatting)
 
 logger: Logger = logging.getLogger('KBAHT')
-logger.setLevel(logging.DEBUG)
+logger.setLevel(logging.INFO)
 logger.addHandler(file_handler)
 logger.addHandler(console_handler)

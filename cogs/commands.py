@@ -11,6 +11,10 @@ from cogs.buttons import Voting
 from utils.logger import logger
 
 
+def key_sort(a):
+    return a.name
+
+
 class OtherCommands(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
@@ -29,13 +33,12 @@ class OtherCommands(commands.Cog):
 
         emb = disnake.Embed(title=f'Информация о боте "{self.bot.user.name}"', color=disnake.Colour.gold())
         emb.set_thumbnail(self.bot.user.avatar)
-        emb.add_field(name='Версия:', value='beta v0.6.2')
+        emb.add_field(name='Версия:', value='beta v0.7')
         emb.add_field(name='Серверов:', value=len(self.bot.guilds))
         emb.add_field(name='Описание:', value='Бот создан для упрощения работы админов.', inline=False)
         emb.add_field(name='Что нового:',
-                      value='```diff\nv0.6\n'
-                            '+Добавлены голосования.\n'
-                            '+Теперь опыт начисляется за использование голосований.\n'
+                      value='```diff\nv0.7\n'
+                            '+Улучшение функций помощи.\n'
                             '~Исправление ошибок.\n'
                             '```', inline=False)
         emb.set_footer(text='@Arkebuzz#7717\n'
@@ -60,12 +63,15 @@ class OtherCommands(commands.Cog):
 
         emb = disnake.Embed(
             title='Помощь',
-            description='Я умею раздавать роли и вести статистику пользователей сервера.\n\nСписок команд:',
+            description='Я умею раздавать роли, вести статистику пользователей сервера и создавать голосования.'
+                        '\n\nСписок команд (некоторые команды доступны только администраторам сервера):',
             color=disnake.Color.blue()
         )
 
-        for com in self.bot.slash_commands:
+        for com in sorted(list(self.bot.slash_commands), key=key_sort):
             emb.add_field('/' + com.name, com.description + '.', inline=False)
+
+        emb.add_field('Для просмотра помощи по созданию голосований смотри /voting_help', '', inline=False)
 
         await inter.response.send_message(embed=emb, ephemeral=True)
 
@@ -120,22 +126,29 @@ class OtherCommands(commands.Cog):
                       value='',
                       inline=False)
 
-        if not info or not info[0][3]:
-            emb.add_field(name='Роль по умолчанию: ⚠️', value='', inline=False)
+        if inter.channel.permissions_for(inter.guild.me).manage_roles:
+            if not info or not info[0][3]:
+                emb.add_field(name='Роль по умолчанию: ⚠️', value='', inline=False)
+            else:
+                emb.add_field(
+                    name='Роль по умолчанию: ' +
+                         ('✅' if self.bot.get_guild(inter.guild_id).get_role(info[0][3]).is_assignable() else '⛔'),
+                    value='',
+                    inline=False
+                )
+
+            emb.add_field('Право на назначение ролей в автораздаче:', '', inline=False)
+
+            for role in db.get_reaction4role(inter.guild_id):
+                emb.add_field('',
+                              f'<@&{role[0]}> ' +
+                              ('✅' if self.bot.get_guild(inter.guild_id).get_role(role[0]).is_assignable() else '⛔'))
         else:
-            emb.add_field(
-                name='Роль по умолчанию: ' +
-                     ('✅' if self.bot.get_guild(inter.guild_id).get_role(info[0][3]).is_assignable() else '⛔'),
-                value='',
-                inline=False
-            )
+            emb.add_field('Право на управление ролями: ⛔',
+                          '',
+                          inline=False)
 
-        emb.add_field('Право на назначение ролей в автораздаче:', '', inline=False)
-
-        for role in db.get_reaction4role(inter.guild_id):
-            emb.add_field('',
-                          f'<@&{role[0]}> ' +
-                          ('✅' if self.bot.get_guild(inter.guild_id).get_role(role[0]).is_assignable() else '⛔'))
+        emb.set_footer(text='✅ - работает; ️️⚠️ - не настроено; ⛔ - нет прав')
 
         await inter.response.send_message(embed=emb)
 
@@ -159,7 +172,7 @@ class OtherCommands(commands.Cog):
             db.update_guild_settings(inter.guild_id, log_id=channel.id)
 
             await inter.response.send_message('Выполнена настройка канала-лога для бота, '
-                                              f'теперь канал лога - {channel}')
+                                              f'теперь канал лога - {channel}', ephemeral=True)
 
             logger.info(f'[CALL] <@{inter.author.id}> /set_log_channel channel: {channel}')
         else:
@@ -383,7 +396,7 @@ class VotingCommands(commands.Cog):
         self.bot: commands.InteractionBot = bot
 
     @commands.slash_command(
-        name='new_voting',
+        name='voting_new',
         description='Создать голосование',
     )
     async def voting(self, inter: disnake.ApplicationCommandInteraction,
@@ -415,8 +428,6 @@ class VotingCommands(commands.Cog):
         Слэш-команда, создаёт новое голосование.
         """
 
-        await inter.response.defer()
-
         sl = {'m': 60, 'h': 3600, 'd': 86400}
 
         try:
@@ -425,14 +436,16 @@ class VotingCommands(commands.Cog):
             if min_choices > max_choices:
                 raise NameError
         except (ValueError, TypeError, KeyError):
-            emb = disnake.Embed(title='Не правильно указано время голосования!', color=disnake.Color.red())
+            emb = disnake.Embed(title='Неправильно указано время голосования!', color=disnake.Color.red())
             await inter.response.send_message(embed=emb, ephemeral=True)
             return
         except NameError:
-            emb = disnake.Embed(title='Не правильно указаны минимальное и максимальное числа вариантов, '
+            emb = disnake.Embed(title='Неправильно указаны минимальное и максимальное числа вариантов, '
                                       'которые может выбрать голосующий!', color=disnake.Color.red())
             await inter.response.send_message(embed=emb, ephemeral=True)
             return
+
+        await inter.response.defer()
 
         answers = []
 
@@ -477,6 +490,62 @@ class VotingCommands(commands.Cog):
         await inter.edit_original_response(embed=emb, view=view)
 
         logger.info(f'[CALL] <@{inter.author.id}> /new_voting : question {question}')
+
+    @commands.slash_command(
+        name='voting_help',
+        description='Справка по голосованиям',
+    )
+    async def voting_help(self, inter: disnake.ApplicationCommandInteraction):
+        emb = disnake.Embed(title='Помощь по взаимодействию с голосованиями', color=disnake.Color.gold())
+
+        emb.add_field(
+            'Создание нового голосования:',
+            'Используйте команду /voting_new и подставьте аргументы команды в соответствии с описанием ниже.',
+            inline=False
+        )
+        emb.add_field('Аргументы функции /voting_new:', '', inline=False)
+
+        emb.add_field(
+            'question',
+            'Обязательный аргумент - вопрос голосования, можно передать любую строку.',
+            inline=False
+        )
+        emb.add_field(
+            'timer',
+            'Время отведенное на голосование, задаётся в виде целого числа и латинской буквы, по умолчанию 1d. '
+            'Допустимые буквы: m - минуты, h - часы, d - дни. Пример значения: 30m',
+            inline=False
+        )
+        emb.add_field(
+            'min_choices',
+            'Минимальное число вариантов, которое может выбрать голосующий, число от 1 до 10, по умолчанию - 1.',
+            inline=False
+        )
+        emb.add_field(
+            'max_choices',
+            'Максимальное число вариантов, которое может выбрать голосующий, число от 1 до 10, по умолчанию - 1.',
+            inline=False
+        )
+        emb.add_field(
+            'answer0-9',
+            'Варианты ответов. Если не передать ни одного варианта, то голосование будет иметь варианты "Да" и "Нет".',
+            inline=False
+        )
+
+        emb.add_field('', '', inline=False)
+
+        emb.add_field(
+            'Как голосовать:',
+            'Чтобы проголосовать, нужно нажать кнопку "Голосовать" под соответствующим голосованием, '
+            'после этого я отправлю Вам сообщение с выбором вариантов ответа, '
+            'где вы можете сделать свой выбор в течение 1 минуты.\n'
+            'Чтобы посмотреть текущее распределение голосов, нажмите кнопку "Результаты", после этого я отправлю '
+            'Вам сообщение с текущим распределением голосов.\n'
+            'После истечения срока голосования, возможность проголосовать пропадёт, а в оригинальном сообщении '
+            'появится распределение голосов.',
+            inline=False)
+
+        await inter.response.send_message(embed=emb, ephemeral=True)
 
 
 def setup(bot: commands.Bot):

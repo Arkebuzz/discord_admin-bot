@@ -59,38 +59,42 @@ async def check_voting_timeout(bot: commands.InteractionBot):
 
         cur_time = time.time()
 
-        for voting in db.get_voting():
-            if voting[4] < cur_time:
-                author = bot.get_user(voting[3])
+        try:
+            for voting in db.get_voting():
+                if voting[4] < cur_time:
+                    author = bot.get_user(voting[3])
 
-                emb = disnake.Embed(title=f'Голосование: {voting[5]}', color=disnake.Color.gold())
-                emb.add_field('Завершилось', f'<t:{int(voting[4])}:R>')
-                emb.add_field('Вариантов', 'от ' + str(voting[6]) + ' до ' + str(voting[7]))
-                emb.add_field('Варианты:', ', '.join(voting[8].split('!|?')), inline=False)
-                emb.set_footer(text=author.name, icon_url=author.avatar)
+                    emb = disnake.Embed(title=f'Голосование: {voting[5]}', color=disnake.Color.gold())
+                    emb.add_field('Завершилось', f'<t:{int(voting[4])}:R>')
+                    emb.add_field('Вариантов', 'от ' + str(voting[6]) + ' до ' + str(voting[7]))
+                    emb.add_field('Варианты:', ', '.join(voting[8].split('!|?')), inline=False)
+                    emb.set_footer(text=author.name, icon_url=author.avatar)
 
-                res = [info[2] for info in db.get_votes(voting[0])]
-                stat = []
+                    res = [info[2] for info in db.get_votes(voting[0])]
+                    stat = []
 
-                for key in set(res):
-                    d = res.count(key) / len(res)
-                    stat.append((key[:18],
-                                 '🔳' * int(d * 10) + '⬜' * (10 - int(d * 10)),
-                                 f'{round(100 * d, 2):.2f} % - {res.count(key)} голос'))
+                    for key in set(res):
+                        d = res.count(key) / len(res)
+                        stat.append((key[:18],
+                                     '🔳' * int(d * 10) + '⬜' * (10 - int(d * 10)),
+                                     f'{round(100 * d, 2):.2f} % - {res.count(key)} голос'))
 
-                emb.add_field('', '**Результаты:**')
+                    emb.add_field('', '**Результаты:**')
 
-                for key, progress, info in stat:
-                    emb.add_field(key + ' ' + info, progress, inline=False)
+                    for key, progress, info in stat:
+                        emb.add_field(key + ' ' + info, progress, inline=False)
 
-                try:
-                    await bot.get_channel(voting[2]).get_partial_message(voting[0]).edit(embed=emb, view=None)
-                except disnake.errors:
-                    logger.warning(f'[IN PROGRESS] deleting voting - question: {voting[5]} message was deleted')
+                    try:
+                        await bot.get_channel(voting[2]).get_partial_message(voting[0]).edit(embed=emb, view=None)
+                    except disnake.errors:
+                        logger.warning(f'[IN PROGRESS] deleting voting - question: {voting[5]} message was deleted')
 
-                db.delete_voting(voting[0])
+                    db.delete_voting(voting[0])
 
-                logger.info(f'[IN PROGRESS] deleted voting - question: {voting[5]}')
+                    logger.info(f'[IN PROGRESS] deleted voting - question: {voting[5]}')
+
+        except Exception as e:
+            logger.warning(f'[IN PROGRESS] {e}')
 
         logger.debug('[FINISHED] check voting timeout')
         await asyncio.sleep(30)
@@ -231,7 +235,7 @@ class MemberEvents(commands.Cog):
                 await ch.send(f'<@{member.id}> присоединился к серверу.')
 
             if guild[3]:
-                await member.add_roles(guild[3])
+                await member.add_roles(member.guild.get_role(guild[3]))
 
             logger.info(f'[NEW USER] <{member.id}>')
 

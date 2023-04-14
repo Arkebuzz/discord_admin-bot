@@ -24,7 +24,7 @@ class DB:
                        analyze INTEGER,
                        log_channel INTEGER,
                        default_role INTEGER,
-                       message_rules INTEGER);
+                       message_roles INTEGER);
                        ''')
 
         self.cur.execute('''CREATE TABLE IF NOT EXISTS reaction4role(
@@ -104,7 +104,7 @@ class DB:
 
         if message_id is not None:
             self.cur.execute('INSERT INTO guilds VALUES(?, 0, NULL, NULL, ?) '
-                             'ON CONFLICT (id) DO UPDATE SET message_rules = ?',
+                             'ON CONFLICT (id) DO UPDATE SET message_roles = ?',
                              (guild_id, message_id, message_id))
 
         self.conn.commit()
@@ -114,7 +114,7 @@ class DB:
         Возвращает сервера бота c введенным ID, если ID не передан, то возвращает все сервера.
 
         :param guild_id: ID сервера.
-        :return: [[id, analyze, log_channel, default_role, message_rules]]
+        :return: [[id, analyze, log_channel, default_role, message_roles]]
         """
 
         if guild_id is None:
