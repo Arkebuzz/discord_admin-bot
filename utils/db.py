@@ -24,7 +24,8 @@ class DB:
                        analyze INTEGER,
                        log_channel INTEGER,
                        default_role INTEGER,
-                       message_roles INTEGER);
+                       distrib_channel INTEGER,
+                       distrib_message INTEGER);
                        ''')
 
         self.cur.execute('''CREATE TABLE IF NOT EXISTS reaction4role(
@@ -70,7 +71,7 @@ class DB:
 
         self.conn.commit()
 
-    def update_guild_settings(self, guild_id, analyze=None, log_id=None, role_id=None, message_id=None):
+    def update_guild_settings(self, guild_id, analyze=None, log_id=None, role_id=None, distribution=None):
         """
         Обновляет лог-канал и сообщение с автораздачей на сервере.
 
@@ -78,34 +79,34 @@ class DB:
         :param analyze: Сервер проанализирован?
         :param log_id: ID лог-канала.
         :param role_id: ID роли по умолчанию.
-        :param message_id: ID сообщения с автораздачей ролей.
+        :param distribution: (ID, ID) ID канала и ID сообщения с автораздачей ролей.
         :return: None
         """
 
-        if log_id is None and role_id is None and message_id is None and analyze is None:
-            self.cur.execute('INSERT INTO guilds VALUES(?, 0, NULL, NULL, NULL) '
+        if log_id is None and role_id is None and distribution is None and analyze is None:
+            self.cur.execute('INSERT INTO guilds VALUES(?, 0, NULL, NULL, NULL, NULL) '
                              'ON CONFLICT (id) DO NOTHING',
                              (guild_id,))
 
         if analyze is not None:
-            self.cur.execute('INSERT INTO guilds VALUES(?, ?, NULL, NULL, NULL) '
+            self.cur.execute('INSERT INTO guilds VALUES(?, ?, NULL, NULL, NULL, NULL) '
                              'ON CONFLICT (id) DO UPDATE SET analyze = ?',
                              (guild_id, analyze, analyze))
 
         if log_id is not None:
-            self.cur.execute('INSERT INTO guilds VALUES(?, 0, ?, NULL, NULL) '
+            self.cur.execute('INSERT INTO guilds VALUES(?, 0, ?, NULL, NULL, NULL) '
                              'ON CONFLICT (id) DO UPDATE SET log_channel = ?',
                              (guild_id, log_id, log_id))
 
         if role_id is not None:
-            self.cur.execute('INSERT INTO guilds VALUES(?, 0, NULL, ?, NULL) '
+            self.cur.execute('INSERT INTO guilds VALUES(?, 0, NULL, ?, NULL, NULL) '
                              'ON CONFLICT (id) DO UPDATE SET default_role = ?',
                              (guild_id, role_id, role_id))
 
-        if message_id is not None:
-            self.cur.execute('INSERT INTO guilds VALUES(?, 0, NULL, NULL, ?) '
-                             'ON CONFLICT (id) DO UPDATE SET message_roles = ?',
-                             (guild_id, message_id, message_id))
+        if distribution is not None:
+            self.cur.execute('INSERT INTO guilds VALUES(?, 0, NULL, NULL, ?, ?) '
+                             'ON CONFLICT (id) DO UPDATE SET distrib_channel = ?, distrib_message = ?',
+                             (guild_id, *distribution, *distribution))
 
         self.conn.commit()
 
@@ -114,7 +115,7 @@ class DB:
         Возвращает сервера бота c введенным ID, если ID не передан, то возвращает все сервера.
 
         :param guild_id: ID сервера.
-        :return: [[id, analyze, log_channel, default_role, message_roles]]
+        :return: [[id, analyze, log_channel, default_role, distrib_channel, distrib_message]]
         """
 
         if guild_id is None:
@@ -177,9 +178,12 @@ class DB:
         :return: None
         """
 
+        self.cur.execute('SELECT reaction FROM reaction4role WHERE guild_id = ? AND role = ?', (guild_id, role_id))
+        react = self.cur.fetchall()
         self.cur.execute('DELETE FROM reaction4role WHERE guild_id = ? AND role = ?', (guild_id, role_id))
 
         self.conn.commit()
+        return react
 
     def update_user(self, guild_id, user_id, user_name, len_message=0, num_attach=0, voting=(0, 0)):
         """
@@ -274,7 +278,7 @@ class DB:
         """
 
         if mes_id is not None:
-            self.cur.execute('SELECT * FROM voting WHERE id = ?', (mes_id, ))
+            self.cur.execute('SELECT * FROM voting WHERE id = ?', (mes_id,))
         else:
             self.cur.execute('SELECT * FROM voting')
 
@@ -288,7 +292,7 @@ class DB:
         :return: None.
         """
 
-        self.cur.execute('DELETE FROM voting WHERE id = ?', (mes_id, ))
+        self.cur.execute('DELETE FROM voting WHERE id = ?', (mes_id,))
 
         self.conn.commit()
 
@@ -322,7 +326,6 @@ class DB:
         :return: [[voting_id, user_id, choice]]
         """
 
-        self.cur.execute('SELECT * FROM votes WHERE voting_id = ?', (mes_id, ))
+        self.cur.execute('SELECT * FROM votes WHERE voting_id = ?', (mes_id,))
 
         return self.cur.fetchall()
-

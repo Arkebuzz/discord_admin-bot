@@ -183,7 +183,9 @@ class ReactionEvents(commands.Cog):
 
     @commands.Cog.listener()
     async def on_raw_reaction_add(self, payload: disnake.RawReactionActionEvent):
-        if payload.user_id == self.bot.user.id:
+        mes = db.get_guilds(payload.guild_id)[0][4:]
+
+        if payload.user_id == self.bot.user.id or payload.channel_id != mes[0] or payload.message_id != mes[1]:
             return
 
         emoji = str(payload.emoji)
@@ -200,7 +202,9 @@ class ReactionEvents(commands.Cog):
 
     @commands.Cog.listener()
     async def on_raw_reaction_remove(self, payload: disnake.RawReactionActionEvent):
-        if payload.user_id == self.bot.user.id:
+        mes = db.get_guilds(payload.guild_id)[0][4:]
+
+        if payload.user_id == self.bot.user.id or payload.channel_id != mes[0] or payload.message_id != mes[1]:
             return
 
         emoji = str(payload.emoji)

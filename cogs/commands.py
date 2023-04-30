@@ -33,12 +33,16 @@ class OtherCommands(commands.Cog):
 
         emb = disnake.Embed(title=f'Информация о боте "{self.bot.user.name}"', color=disnake.Colour.gold())
         emb.set_thumbnail(self.bot.user.avatar)
-        emb.add_field(name='Версия:', value='beta v0.7')
+        emb.add_field(name='Версия:', value='v0.7.1')
         emb.add_field(name='Серверов:', value=len(self.bot.guilds))
         emb.add_field(name='Описание:', value='Бот создан для упрощения работы админов.', inline=False)
         emb.add_field(name='Что нового:',
-                      value='```diff\nv0.7\n'
+                      value='```diff\nv0.7.1\n'
                             '+Улучшение функций помощи.\n'
+                            '+Теперь в топе пользователей пишется место человека, вызвавшего команду, даже если '
+                            'его нет в таблице.\n'
+                            '+Теперь изменение списка ролей на раздачу не требует создания нового сообщения '
+                            'раздачи ролей.\n'
                             '~Исправление ошибок.\n'
                             '```', inline=False)
         emb.set_footer(text='@Arkebuzz#7717\n'
@@ -232,7 +236,8 @@ class DistributionCommands(commands.Cog):
         await inter.response.defer(ephemeral=True)
         await inter.delete_original_response()
 
-        emb = disnake.Embed(title='Какие роли вы хотите иметь?',
+        emb = disnake.Embed(title='Выберите роли',
+                            description='Поставь реакцию для получения соответствующей роли.',
                             colour=disnake.Colour.gold())
 
         roles = db.get_reaction4role(inter.guild_id)[:10]
@@ -244,7 +249,7 @@ class DistributionCommands(commands.Cog):
         for _, reaction in roles:
             await mes.add_reaction(reaction)
 
-        db.update_guild_settings(inter.guild_id, message_id=mes.id)
+        db.update_guild_settings(inter.guild_id, distribution=(inter.channel_id, mes.id))
         logger.info(f'[CALL] <@{inter.author.id}> /distribution_new_message')
 
     @commands.slash_command(
@@ -271,10 +276,34 @@ class DistributionCommands(commands.Cog):
 
         elif emoji.is_emoji(reaction):
             db.update_reaction4role(inter.guild_id, role.id, reaction)
-            await inter.response.send_message('Связка роль - реакция добавлена, используйте /distribution_new_message, '
-                                              'чтобы обновить сообщение выдачи ролей.', ephemeral=True)
 
             logger.info(f'[CALL] <@{inter.author.id}> /distribution_add_role role`s append')
+
+            info = db.get_guilds(inter.guild_id)[0][4:]
+            if not all(info):
+                await inter.response.send_message(
+                    'Связка роль - реакция добавлена, используйте /distribution_new_message, '
+                    'чтобы создать сообщение выдачи ролей.', ephemeral=True)
+                return
+
+            emb = disnake.Embed(title='Выберите роли',
+                                description='Поставь реакцию для получения соответствующей роли',
+                                colour=disnake.Colour.gold())
+
+            roles = db.get_reaction4role(inter.guild_id)[:10]
+            for role, react in roles:
+                emb.add_field(name='', value=f'{react} - <@&{role}>', inline=False)
+
+            mes = self.bot.get_channel(info[0]).get_partial_message(info[1])
+
+            await mes.edit(embed=emb)
+            await mes.add_reaction(reaction)
+
+            await inter.response.send_message(
+                'Связка роль - реакция добавлена, сообщение с выдачей реакций обновлено.', ephemeral=True
+            )
+
+            logger.info(f'[CALL] <@{inter.author.id}> /distribution_add_role distribution`s update')
 
         else:
             await inter.response.send_message('Невозможно добавить связку роль - реакция, переданная реакция не '
@@ -296,11 +325,43 @@ class DistributionCommands(commands.Cog):
         :return:
         """
 
-        db.delete_reaction4role(inter.guild_id, role.id)
-        await inter.response.send_message('Связка роль - реакция удалена, используйте /distribution_new_message, '
-                                          'чтобы обновить сообщение выдачи ролей.', ephemeral=True)
+        reaction = db.delete_reaction4role(inter.guild_id, role.id)
+
+        if reaction:
+            reaction = reaction[0][0]
+        else:
+            await inter.response.send_message(
+                'Данной роли нет в раздаче, используйте /distribution_add_role, '
+                'чтобы добавить роль к раздаче.', ephemeral=True)
+            return
 
         logger.info(f'[CALL] <@{inter.author.id}> /distribution_add_role')
+
+        info = db.get_guilds(inter.guild_id)[0][4:]
+        if not all(info):
+            await inter.response.send_message(
+                'Связка роль - реакция удалена, используйте /distribution_new_message, '
+                'чтобы создать сообщение выдачи ролей.', ephemeral=True)
+            return
+
+        emb = disnake.Embed(title='Выберите роли',
+                            description='Поставь реакцию для получения соответствующей роли',
+                            colour=disnake.Colour.gold())
+
+        roles = db.get_reaction4role(inter.guild_id)[:10]
+        for role, react in roles:
+            emb.add_field(name='', value=f'{react} - <@&{role}>', inline=False)
+
+        mes = self.bot.get_channel(info[0]).get_partial_message(info[1])
+
+        await mes.edit(embed=emb)
+        await mes.remove_reaction(reaction, self.bot.user)
+
+        await inter.response.send_message(
+            'Связка роль - реакция удалена, сообщение с выдачей реакций обновлено.', ephemeral=True
+        )
+
+        logger.info(f'[CALL] <@{inter.author.id}> /distribution_add_role distribution`s update')
 
 
 class StatisticCommands(commands.Cog):
@@ -376,13 +437,15 @@ class StatisticCommands(commands.Cog):
         description='Топ пользователей по количеству опыта',
     )
     async def user_top(self, inter: disnake.ApplicationCommandInteraction):
-        info = db.get_users(inter.guild_id)[:10]
+        info = db.get_users(inter.guild_id)
+        number = [i[1] for i in info].index(inter.author.id)
 
         emb = disnake.Embed(title=f'Топ пользователей', colour=disnake.Colour.gold())
+        emb.add_field('', f'{inter.author.name}, вы находитесь на {number + 1} месте.', inline=False)
         emb.add_field(
             '',
             '```' +
-            tabulate([(user[2], user[3]) for user in info],
+            tabulate([(user[2], user[3]) for user in info[:10]],
                      ['Участник', 'Опыт'], 'fancy_grid', maxcolwidths=[18, None]) +
             '```'
         )
