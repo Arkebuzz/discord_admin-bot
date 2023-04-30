@@ -345,7 +345,7 @@ class DistributionCommands(commands.Cog):
             return
 
         emb = disnake.Embed(title='Выберите роли',
-                            description='Поставь реакцию для получения соответствующей роли',
+                            description='Поставьте реакцию для получения соответствующей роли',
                             colour=disnake.Colour.gold())
 
         roles = db.get_reaction4role(inter.guild_id)[:10]
