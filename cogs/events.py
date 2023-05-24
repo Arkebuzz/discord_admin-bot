@@ -5,6 +5,7 @@ import disnake
 from disnake.ext import commands
 
 from main import db
+from cogs.buttons import Voting
 from utils.logger import logger
 
 
@@ -50,7 +51,27 @@ async def refresh(bot: commands.InteractionBot):
         for guild_id in set(cur_guilds) - set(db_guilds):
             await add_guild2db(bot, guild_id)
 
-    logger.debug('[FINISHED] all guilds refresh')
+    logger.debug('[IN PROGRESS] all guilds refresh')
+
+    for voting in db.get_voting():
+        author = bot.get_user(voting[3])
+
+        emb = disnake.Embed(title=voting[5], color=disnake.Color.gold())
+        emb.add_field('Завершится', f'<t:{int(voting[4])}:R>')
+        emb.add_field('Вариантов', 'от ' + str(voting[6]) + ' до ' + str(voting[7]))
+        emb.add_field('Варианты:', ', '.join(voting[8].split('!|?')), inline=False)
+        emb.set_footer(text=author.name, icon_url=author.avatar)
+
+        view = Voting(voting[0], voting[5], voting[8].split('!|?'), voting[4] - time.time(), *voting[6:8])
+
+        try:
+            await bot.get_channel(voting[2]).get_partial_message(voting[0]).edit(embed=emb, view=view)
+        except disnake.errors:
+            logger.warning(f'[IN PROGRESS] updating voting - question: {voting[5]} message was deleted')
+
+        logger.info(f'[IN PROGRESS] updating voting - question: {voting[5]}')
+
+    logger.debug('[FINISHED] all voting is update')
 
 
 async def check_voting_timeout(bot: commands.InteractionBot):
@@ -97,7 +118,7 @@ async def check_voting_timeout(bot: commands.InteractionBot):
             logger.warning(f'[IN PROGRESS] {e}')
 
         logger.debug('[FINISHED] check voting timeout')
-        await asyncio.sleep(30)
+        await asyncio.sleep(60)
 
 
 class MainEvents(commands.Cog):
@@ -117,6 +138,7 @@ class MainEvents(commands.Cog):
         logger.info('Bot started')
 
         await refresh(self.bot)
+        await asyncio.sleep(600)
         asyncio.ensure_future(check_voting_timeout(self.bot))
 
     @commands.Cog.listener()
@@ -176,7 +198,7 @@ class MainEvents(commands.Cog):
 
 
 class ReactionEvents(commands.Cog):
-    """Класс, задающий активности с реакциями на серверах."""
+    """Класс, задающий активности с реакциями."""
 
     def __init__(self, bot: commands.InteractionBot):
         self.bot = bot
@@ -222,7 +244,7 @@ class ReactionEvents(commands.Cog):
 
 
 class MemberEvents(commands.Cog):
-    """Класс, задающий активности пользователей."""
+    """Класс, обрабатывающий добавление/удаление пользователей."""
 
     def __init__(self, bot: commands.InteractionBot):
         self.bot = bot
@@ -255,7 +277,7 @@ class MemberEvents(commands.Cog):
 
 
 class MessageEvents(commands.Cog):
-    """Класс, задающий активности пользователей."""
+    """Класс, обновляющий статистику пользователей."""
 
     def __init__(self, bot: commands.InteractionBot):
         self.bot = bot

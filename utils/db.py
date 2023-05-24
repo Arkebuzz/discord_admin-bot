@@ -215,12 +215,13 @@ class DB:
 
         self.conn.commit()
 
-    def get_users(self, guild_id, user_id=None):
+    def get_users(self, guild_id, user_id=None, sort_by=None):
         """
         Возвращает информацию о пользователе на сервере.
 
         :param guild_id: ID сервера.
         :param user_id: ID пользователя.
+        :param sort_by: По чему сортировать
         :return: [[guild_id, user_id, user_name, experience, messages, num_charact, num_voting, num_votes]]
         """
 
@@ -228,7 +229,7 @@ class DB:
             self.cur.execute('SELECT * FROM users WHERE guild_id = ? AND user_id = ? ', (guild_id, user_id))
         else:
             self.cur.execute('SELECT * FROM users WHERE guild_id = ? '
-                             'ORDER BY experience DESC ', (guild_id,))
+                             f'ORDER BY {sort_by if sort_by is not None else "experience"} DESC ', (guild_id, ))
 
         return self.cur.fetchall()
 

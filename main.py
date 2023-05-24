@@ -16,7 +16,7 @@ db = DB()
 intents = disnake.Intents.all()
 bot = commands.InteractionBot(intents=intents)
 
-bot.load_extension('cogs.commands')
+bot.load_extensions('cogs/commands')
 bot.load_extension('cogs.events')
 
 bot.run(TOKEN)
