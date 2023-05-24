@@ -30,14 +30,15 @@ class OtherCommands(commands.Cog):
 
         emb = disnake.Embed(title=f'Информация о боте "{self.bot.user.name}"', color=disnake.Colour.gold())
         emb.set_thumbnail(self.bot.user.avatar)
-        emb.add_field(name='Версия:', value='v0.8.1')
+        emb.add_field(name='Версия:', value='v0.8.2')
         emb.add_field(name='Серверов:', value=len(self.bot.guilds))
         emb.add_field(name='Описание:', value='Бот создан для упрощения работы админов.', inline=False)
         emb.add_field(name='Что нового:',
-                      value='```diff\nv0.8\n'
+                      value='```diff\nv0.8.2\n'
                             '+Перезапуск бота не ломает голосования.\n'
-                            '+Теперь можно задать параметр сортировки топа пользователей\n'
+                            '+Теперь можно задать параметр сортировки топа пользователей.\n'
                             '+Добавлена команда /roll\n'
+                            '~Теперь боты и удаленные пользователи не участвуют в топах.\n'
                             '~Исправлены ошибки.\n'
                             '```', inline=False)
         emb.set_footer(text='@Arkebuzz#7717\n'

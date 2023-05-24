@@ -17,10 +17,9 @@ async def add_guild2db(bot, guild_id):
     for ch in bot.get_guild(guild_id).text_channels:
         try:
             async for mes in ch.history(limit=10000):
-                if mes.author.id != bot.user.id:
+                if not mes.author.bot and mes.author.name != 'Deleted User':
                     name = mes.author.name.encode('windows-1251', 'replace').decode('windows-1251')
-                    db.update_user(mes.guild.id, mes.author.id, name, len(mes.content),
-                                   len(mes.attachments))
+                    db.update_user(mes.guild.id, mes.author.id, name, len(mes.content), len(mes.attachments))
 
         except disnake.errors.Forbidden:
             continue
@@ -286,7 +285,7 @@ class MessageEvents(commands.Cog):
     async def on_message(self, mes: disnake.Message):
         guild = db.get_guilds(mes.guild.id)
 
-        if not guild or not guild[0][1] or mes.author.id == self.bot.user.id:
+        if not guild or not guild[0][1] or mes.author.bot or mes.author.name != 'Deleted User':
             return
 
         name = mes.author.name.encode('windows-1251', 'replace').decode('windows-1251')
