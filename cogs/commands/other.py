@@ -30,7 +30,7 @@ class OtherCommands(commands.Cog):
 
         emb = disnake.Embed(title=f'Информация о боте "{self.bot.user.name}"', color=disnake.Colour.gold())
         emb.set_thumbnail(self.bot.user.avatar)
-        emb.add_field(name='Версия:', value='v0.8')
+        emb.add_field(name='Версия:', value='v0.8.1')
         emb.add_field(name='Серверов:', value=len(self.bot.guilds))
         emb.add_field(name='Описание:', value='Бот создан для упрощения работы админов.', inline=False)
         emb.add_field(name='Что нового:',

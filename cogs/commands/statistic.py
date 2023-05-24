@@ -7,11 +7,12 @@ from main import db
 from utils.logger import logger
 
 PARAM_SORT = {
-    'Опыт': ('experience', 3),
-    'Сообщений': ('messages', 4),
-    'Символов': ('num_charact', 5),
-    'Голосов': ('num_voting', 6),
-    'Голосований': ('num_votes', 7)
+    'опыту': ('experience', 3, 'Опыт'),
+    'кол-ву сообщений': ('messages', 4, 'Сообщений'),
+    'кол-ву символов': ('num_charact', 5, 'Символов'),
+    'кол-ву символов на сообщение': ('num_charact / messages', -1, 'C/C'),
+    'кол-ву голосований': ('num_voting', 6, 'Голосований'),
+    'кол-ву голосов': ('num_votes', 7, 'Голосов')
 }
 
 
@@ -88,9 +89,11 @@ class StatisticCommands(commands.Cog):
         description='Топ пользователей по количеству опыта',
     )
     async def user_top(self, inter: disnake.ApplicationCommandInteraction,
-                       sort_by: str = commands.Param(choices=PARAM_SORT.keys(), default='Опыт')):
+                       sort_by: str = commands.Param(choices=PARAM_SORT.keys(), default='опыту',
+                                                     description='Сортировать по')):
 
         info = db.get_users(inter.guild_id, sort_by=PARAM_SORT[sort_by][0])
+
         number = [i[1] for i in info].index(inter.author.id)
 
         emb = disnake.Embed(title=f'Топ пользователей по {sort_by}', colour=disnake.Colour.gold())
@@ -99,7 +102,7 @@ class StatisticCommands(commands.Cog):
             '',
             '```' +
             tabulate([(user[2], user[PARAM_SORT[sort_by][1]]) for user in info[:10]],
-                     ['Участник', sort_by], 'fancy_grid', maxcolwidths=[18, None]) +
+                     ['Участник', PARAM_SORT[sort_by][2]], 'fancy_grid', maxcolwidths=[15, 5]) +
             '```'
         )
 
