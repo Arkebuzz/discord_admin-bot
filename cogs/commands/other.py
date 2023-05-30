@@ -6,6 +6,7 @@ from disnake.ext import commands
 
 from main import db
 from utils.logger import logger
+from utils.free_games import search_free_games
 
 
 def key_sort(a):
@@ -30,14 +31,15 @@ class OtherCommands(commands.Cog):
 
         emb = disnake.Embed(title=f'Информация о боте "{self.bot.user.name}"', color=disnake.Colour.gold())
         emb.set_thumbnail(self.bot.user.avatar)
-        emb.add_field(name='Версия:', value='v0.8.2')
+        emb.add_field(name='Версия:', value='v0.8.3')
         emb.add_field(name='Серверов:', value=len(self.bot.guilds))
         emb.add_field(name='Описание:', value='Бот создан для упрощения работы админов.', inline=False)
         emb.add_field(name='Что нового:',
-                      value='```diff\nv0.8.2\n'
+                      value='```diff\nv0.8.3\n'
                             '+Перезапуск бота не ломает голосования.\n'
                             '+Теперь можно задать параметр сортировки топа пользователей.\n'
                             '+Добавлена команда /roll\n'
+                            '+Добавлена команда /free_steam_games\n'
                             '~Теперь боты и удаленные пользователи не участвуют в топах.\n'
                             '~Исправлены ошибки.\n'
                             '```', inline=False)
@@ -76,38 +78,6 @@ class OtherCommands(commands.Cog):
         await inter.response.send_message(embed=emb, ephemeral=True)
 
         logger.info(f'[CALL] <@{inter.author.id}> /help')
-
-    @commands.slash_command(
-        name='ping',
-        description='Задержка бота',
-    )
-    async def ping(self, inter: disnake.ApplicationCommandInteraction):
-        """
-        Слэш-команда, отправляет в ответ пинг.
-
-        :param inter:
-        :return:
-        """
-
-        logger.info(f'[CALL] <@{inter.author.id}> /ping')
-
-        await inter.response.send_message(f'Пинг: {round(self.bot.latency * 1000)}мс', ephemeral=True)
-
-    @commands.slash_command(
-        name='roll',
-        description='Случайное число от 0 до 100',
-    )
-    async def roll(self, inter: disnake.ApplicationCommandInteraction):
-        """
-        Слэш-команда, отправляет в ответ случайное число от 0 до 100.
-
-        :param inter:
-        :return:
-        """
-
-        logger.info(f'[CALL] <@{inter.author.id}> /roll')
-
-        await inter.response.send_message(random.randint(0, 100))
 
     @commands.slash_command(
         name='check_permissions',
@@ -194,6 +164,60 @@ class OtherCommands(commands.Cog):
         else:
             await inter.response.send_message('Невозможно выполнить настройку канала-лога для бота, '
                                               'бот не может писать в переданном канале.', ephemeral=True)
+
+    @commands.slash_command(
+        name='ping',
+        description='Задержка бота',
+    )
+    async def ping(self, inter: disnake.ApplicationCommandInteraction):
+        """
+        Слэш-команда, отправляет в ответ пинг.
+
+        :param inter:
+        :return:
+        """
+
+        logger.info(f'[CALL] <@{inter.author.id}> /ping')
+
+        await inter.response.send_message(f'Пинг: {round(self.bot.latency * 1000)}мс', ephemeral=True)
+
+    @commands.slash_command(
+        name='roll',
+        description='Случайное число от 0 до 100',
+    )
+    async def roll(self, inter: disnake.ApplicationCommandInteraction):
+        """
+        Слэш-команда, отправляет в ответ случайное число от 0 до 100.
+
+        :param inter:
+        :return:
+        """
+
+        logger.info(f'[CALL] <@{inter.author.id}> /roll')
+
+        await inter.response.send_message(random.randint(0, 100))
+
+    @commands.slash_command(
+        name='free_steam_games',
+        description='Список игр, которые раздают в Steam',
+    )
+    async def games(self, inter: disnake.ApplicationCommandInteraction):
+        """
+        Слэш-команда, отправляет в ответ список игр, ставших бесплатными.
+
+        :param inter:
+        :return:
+        """
+
+        logger.info(f'[CALL] <@{inter.author.id}> /free_steam_games')
+
+        emb = disnake.Embed(title='Сейчас бесплатны', colour=disnake.Colour.gold())
+
+        games = await search_free_games()
+        for game in games[:25]:
+            emb.add_field(game[0], '\n'.join(game[1:]), inline=False)
+
+        await inter.response.send_message(embed=emb)
 
 
 def setup(bot: commands.Bot):
