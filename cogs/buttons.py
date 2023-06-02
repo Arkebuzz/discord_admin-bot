@@ -50,7 +50,7 @@ class Voting(disnake.ui.View):
         await view.wait()
 
         if view.value is not None:
-            db.new_vote(self.mes_id, (inter.guild_id, inter.author.id, inter.author.id), view.value)
+            db.add_vote(self.mes_id, (inter.guild_id, inter.author.id, inter.author.id), view.value)
 
             await inter.edit_original_response('Ваш голос принят.', view=None)
             logger.info(f'[NEW VOTE] <@{inter.author.id}> question {self.question}')
@@ -59,7 +59,7 @@ class Voting(disnake.ui.View):
 
     @disnake.ui.button(label='Результаты', style=disnake.ButtonStyle.green)
     async def results(self, button: disnake.ui.Button, inter: disnake.ApplicationCommandInteraction):
-        res = [info[2] for info in db.get_votes(self.mes_id)]
+        res = [info[2] for info in db.get_data('votes', voting_id=self.mes_id)]
         stat = []
 
         for key in set(res):

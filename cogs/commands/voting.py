@@ -17,7 +17,7 @@ class VotingCommands(commands.Cog):
         name='voting_new',
         description='Создать голосование',
     )
-    async def voting(self, inter: disnake.ApplicationCommandInteraction,
+    async def voting_new(self, inter: disnake.ApplicationCommandInteraction,
                      question: str = commands.Param(description='Вопрос голосования'),
                      timer: str = commands.Param(
                          description='Время на голосование (1m/1h/1d)',
@@ -99,7 +99,7 @@ class VotingCommands(commands.Cog):
 
         msg = await inter.original_message()
 
-        db.new_voting(
+        db.add_voting(
             msg.id, inter.channel_id, (inter.guild_id, inter.author.id, inter.author.name),
             question, timer, min_choices, max_choices, answers
         )

@@ -7,6 +7,7 @@ from disnake.ext import commands
 from main import db
 from cogs.buttons import Voting
 from utils.logger import logger
+from utils.free_games import search_games
 
 
 async def add_guild2db(bot, guild_id):
@@ -40,11 +41,11 @@ async def refresh(bot: commands.InteractionBot):
     logger.debug('[START] guilds refresh')
 
     cur_guilds = [g.id for g in bot.guilds]
-    db_guilds = [g[0] for g in db.get_guilds() if g[1]]
+    db_guilds = [g[0] for g in db.get_data('guilds') if g[1]]
 
     if db_guilds != cur_guilds:
         for guild_id in set(db_guilds) - set(cur_guilds):
-            db.delete_guild(guild_id)
+            db.delete_date('guilds', id=guild_id)
             logger.warning(f'[IN PROGRESS] guilds refresh : bot not in {db_guilds} but it`s in DB')
 
         for guild_id in set(cur_guilds) - set(db_guilds):
@@ -52,7 +53,7 @@ async def refresh(bot: commands.InteractionBot):
 
     logger.debug('[IN PROGRESS] all guilds refresh')
 
-    for voting in db.get_voting():
+    for voting in db.get_data('voting'):
         author = bot.get_user(voting[3])
 
         emb = disnake.Embed(title=voting[5], color=disnake.Color.gold())
@@ -80,7 +81,7 @@ async def check_voting_timeout(bot: commands.InteractionBot):
         cur_time = time.time()
 
         try:
-            for voting in db.get_voting():
+            for voting in db.get_data('voting'):
                 if voting[4] < cur_time:
                     author = bot.get_user(voting[3])
 
@@ -90,7 +91,7 @@ async def check_voting_timeout(bot: commands.InteractionBot):
                     emb.add_field('Варианты:', ', '.join(voting[8].split('!|?')), inline=False)
                     emb.set_footer(text=author.name, icon_url=author.avatar)
 
-                    res = [info[2] for info in db.get_votes(voting[0])]
+                    res = [info[2] for info in db.get_data('votes', voting_id=voting[0])]
                     stat = []
 
                     for key in set(res):
@@ -109,7 +110,7 @@ async def check_voting_timeout(bot: commands.InteractionBot):
                     except disnake.errors:
                         logger.warning(f'[IN PROGRESS] deleting voting - question: {voting[5]} message was deleted')
 
-                    db.delete_voting(voting[0])
+                    db.delete_date('voting', id=voting[0])
 
                     logger.info(f'[IN PROGRESS] deleted voting - question: {voting[5]}')
 
@@ -118,6 +119,47 @@ async def check_voting_timeout(bot: commands.InteractionBot):
 
         logger.debug('[FINISHED] check voting timeout')
         await asyncio.sleep(60)
+
+
+async def check_new_games(bot: commands.InteractionBot):
+    while True:
+        logger.debug('[START] check new games')
+
+        try:
+            games = await search_games()
+
+            cur_games = set(games)
+            bd_games = set(db.get_data('games'))
+
+            if cur_games != bd_games:
+                for game in bd_games - cur_games:
+                    db.delete_date('games', url=game[2])
+
+                    title = game[0].encode('windows-1251', 'replace').decode('windows-1251')
+                    logger.info(f'[IN PROGRESS] game is no longer free - {title}')
+
+                for game in cur_games - bd_games:
+                    db.add_game(game)
+
+                    dlc = ' (DLC)' if game[1] else ''
+                    emb = disnake.Embed(title=f'{game[0]}{dlc} сейчас бесплатна!', colour=disnake.Colour.gold())
+                    emb.add_field('Описание:', game[3] if game[3] is not None else '-', inline=False)
+                    emb.add_field('Отзывы:', game[4] if game[4] is not None else '-', inline=False)
+                    emb.add_field(game[5], game[2])
+                    emb.set_image(game[-2])
+
+                    for guild in db.get_data('guilds'):
+                        if guild[6] is not None:
+                            await bot.get_channel(guild[6]).send(embed=emb)
+
+                    title = game[0].encode('windows-1251', 'replace').decode('windows-1251')
+                    logger.info(f'[IN PROGRESS] new free game - {title}')
+
+        except Exception as e:
+            logger.warning(f'[IN PROGRESS] check new games {e}')
+
+        logger.debug('[FINISHED] check new games')
+        await asyncio.sleep(3600)
 
 
 class MainEvents(commands.Cog):
@@ -139,6 +181,7 @@ class MainEvents(commands.Cog):
         await refresh(self.bot)
         await asyncio.sleep(600)
         asyncio.ensure_future(check_voting_timeout(self.bot))
+        asyncio.ensure_future(check_new_games(self.bot))
 
     @commands.Cog.listener()
     async def on_guild_join(self, guild: disnake.Intents.guilds):
@@ -156,11 +199,12 @@ class MainEvents(commands.Cog):
                 await channel.send('Здравствуйте, я очень рад, что вы добавили меня на сервер.\n'
                                    'Сейчас я проведу анализ текущих сообщений на сервере, это займёт несколько минут.\n'
                                    'Вы можете пользоваться ботом в течении этого времени, '
-                                   'просто статистика пользователей и сервера может выводиться некорректно.')
+                                   'однако статистика пользователей и сервера будет выводиться некорректно.')
 
                 emb = disnake.Embed(
-                    description='Я умею раздавать роли и вести статистику пользователей сервера.\n\n'
-                                'Описание команд',
+                    description='Я умею раздавать роли, вести статистику пользователей сервера, устраивать голосования '
+                                'и сообщать о новых раздачах игр.\n\n'
+                                'Список команд (некоторые команды доступны только администраторам сервера):',
                     color=disnake.Color.gold()
                 )
 
@@ -172,8 +216,10 @@ class MainEvents(commands.Cog):
                 await add_guild2db(self.bot, guild.id)
 
                 await channel.send('Анализ сообщений завершён.')
-                await channel.send('Если вам нужны оповещения о присоединении/уходе участников выберите для них '
+                await channel.send('Если вам нужны оповещения о присоединении/уходе участников, то выберите для этого '
                                    'канал командой /set_log_channel')
+                await channel.send('Если вам нужны оповещения о новых раздачах игр, то выберите для этого '
+                                   'канал командой /set_games_channel')
                 await channel.send('Рекомендуется вызвать команду /check_permissions, чтобы удостовериться, '
                                    'что бот имеет необходимые права.')
                 break
@@ -190,7 +236,7 @@ class MainEvents(commands.Cog):
         :return:
         """
 
-        db.delete_guild(guild.id)
+        db.delete_date('guilds', id=guild.id)
         logger.warning(f'[IN PROGRESS] guilds refresh : bot not in {guild.id} but it`s in DB')
 
         logger.info(f'[DEL GUILD] <{guild.id}>')
@@ -204,14 +250,14 @@ class ReactionEvents(commands.Cog):
 
     @commands.Cog.listener()
     async def on_raw_reaction_add(self, payload: disnake.RawReactionActionEvent):
-        mes = db.get_guilds(payload.guild_id)[0][4:]
+        mes = db.get_data('guilds', payload.guild_id)[0][4:]
 
         if payload.user_id == self.bot.user.id or payload.channel_id != mes[0] or payload.message_id != mes[1]:
             return
 
         emoji = str(payload.emoji)
 
-        roles = db.get_reaction4role(payload.guild_id)
+        roles = db.get_data('reaction4role', 'role, reaction', guild_id=payload.guild_id)
         active_emoji = [react[1] for react in roles]
 
         if emoji in active_emoji:
@@ -223,14 +269,14 @@ class ReactionEvents(commands.Cog):
 
     @commands.Cog.listener()
     async def on_raw_reaction_remove(self, payload: disnake.RawReactionActionEvent):
-        mes = db.get_guilds(payload.guild_id)[0][4:]
+        mes = db.get_data('guilds', payload.guild_id)[0][4:]
 
         if payload.user_id == self.bot.user.id or payload.channel_id != mes[0] or payload.message_id != mes[1]:
             return
 
         emoji = str(payload.emoji)
 
-        roles = db.get_reaction4role(payload.guild_id)
+        roles = db.get_data('reaction4role', 'role, reaction', guild_id=payload.guild_id)
         active_emoji = [react[1] for react in roles]
 
         if emoji in active_emoji:
@@ -250,7 +296,7 @@ class MemberEvents(commands.Cog):
 
     @commands.Cog.listener()
     async def on_member_join(self, member: disnake.Member):
-        guild = db.get_guilds(member.guild.id)
+        guild = db.get_data('guilds', id=member.guild.id)
 
         if guild:
             guild = guild[0]
@@ -266,7 +312,7 @@ class MemberEvents(commands.Cog):
 
     @commands.Cog.listener()
     async def on_raw_member_remove(self, payload: disnake.RawGuildMemberRemoveEvent):
-        guild = db.get_guilds(payload.guild_id)
+        guild = db.get_data('guilds', id=payload.guild_id)
 
         if guild and guild[0][2]:
             ch = self.bot.get_channel(guild[0][2])
@@ -283,7 +329,7 @@ class MessageEvents(commands.Cog):
 
     @commands.Cog.listener()
     async def on_message(self, mes: disnake.Message):
-        guild = db.get_guilds(mes.guild.id)
+        guild = db.get_data('guilds', id=mes.guild.id)
 
         if not guild or not guild[0][1] or mes.author.bot or mes.author.name != 'Deleted User':
             return

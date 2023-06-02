@@ -26,7 +26,7 @@ class StatisticCommands(commands.Cog):
     )
     async def server_info(self, inter: disnake.ApplicationCommandInteraction):
         guild = inter.guild
-        info = db.get_users(guild.id)
+        info = db.get_data('users', '*, num_charact / messages', guild_id=guild.id)
         exp = sum(us[3] for us in info) // 2
         mes = sum(us[4] for us in info)
 
@@ -34,7 +34,7 @@ class StatisticCommands(commands.Cog):
         emb.set_author(name=guild.name + f'\t\t\t\tУровень {exp // 1000 + 1}', icon_url=guild.icon)
 
         emb.add_field('Опыт', exp)
-        emb.add_field('Создатель', f'<@{guild.owner_id}>')
+        emb.add_field('Владелец', f'<@{guild.owner_id}>')
         emb.add_field('Создан', f'<t:{int(guild.created_at.timestamp())}:R>')
         emb.add_field('Участников', guild.member_count)
         emb.add_field('Сообщений', mes)
@@ -53,7 +53,7 @@ class StatisticCommands(commands.Cog):
         if user is None:
             user = inter.author
 
-        db_info = db.get_users(inter.guild_id, user_id=user.id)
+        db_info = db.get_data('users', '*, num_charact / messages', guild_id=inter.guild_id, user_id=user.id)
 
         if user.id == self.bot.user.id:
             info = ['∞', '∞', '∞']
@@ -92,7 +92,8 @@ class StatisticCommands(commands.Cog):
                        sort_by: str = commands.Param(choices=PARAM_SORT.keys(), default='опыту',
                                                      description='Сортировать по')):
 
-        info = db.get_users(inter.guild_id, sort_by=PARAM_SORT[sort_by][0])
+        info = db.get_data('users', '*, num_charact / messages', [PARAM_SORT[sort_by][0] + ' DESC', 'user_name ASC'],
+                           guild_id=inter.guild_id)
 
         number = [i[1] for i in info].index(inter.author.id)
 

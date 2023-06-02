@@ -48,7 +48,7 @@ class DistributionCommands(commands.Cog):
         description='Отправить сообщение автовыдачи ролей по эмодзи',
         default_member_permissions=disnake.Permissions(8)
     )
-    async def new_distribution(self, inter: disnake.ApplicationCommandInteraction):
+    async def distribution_new_message(self, inter: disnake.ApplicationCommandInteraction):
         """
         Отправляет новое сообщение с автовыдачей ролей по эмодзи.
 
@@ -63,7 +63,7 @@ class DistributionCommands(commands.Cog):
                             description='Поставь реакцию для получения соответствующей роли.',
                             colour=disnake.Colour.gold())
 
-        roles = db.get_reaction4role(inter.guild_id)[:10]
+        roles = db.get_data('reaction4role', 'role, reaction', guild_id=inter.guild_id)[:10]
         for role, reaction in roles:
             emb.add_field(name='', value=f'{reaction} - <@&{role}>', inline=False)
 
@@ -80,8 +80,8 @@ class DistributionCommands(commands.Cog):
         description='Добавить роль к автовыдаче по эмодзи',
         default_member_permissions=disnake.Permissions(8)
     )
-    async def add_role(self, inter: disnake.ApplicationCommandInteraction, role: disnake.Role,
-                       reaction: str):
+    async def distribution_add_role(self, inter: disnake.ApplicationCommandInteraction, role: disnake.Role,
+                                    reaction: str):
         """
         Обновляет связку роль - реакция на сервере.
 
@@ -98,11 +98,15 @@ class DistributionCommands(commands.Cog):
             logger.info(f'[CALL] <@{inter.author.id}> /distribution_add_role incorrect role')
 
         elif emoji.is_emoji(reaction):
-            db.update_reaction4role(inter.guild_id, role.id, reaction)
+            if db.update_reaction4role(inter.guild_id, role.id, reaction) == -1:
+                await inter.response.send_message(
+                    'Невозможно добавить связку роль - реакция, данная реакция или роль уже участвует в раздаче, '
+                    'вы можете удалить лишние связки роль-реакция командой /distribution_dell_role', ephemeral=True)
+                return
 
             logger.info(f'[CALL] <@{inter.author.id}> /distribution_add_role role`s append')
 
-            info = db.get_guilds(inter.guild_id)[0][4:]
+            info = db.get_data('guilds', id=inter.guild_id)[0][4:6]
             if not all(info):
                 await inter.response.send_message(
                     'Связка роль - реакция добавлена, используйте /distribution_new_message, '
@@ -113,7 +117,7 @@ class DistributionCommands(commands.Cog):
                                 description='Поставь реакцию для получения соответствующей роли',
                                 colour=disnake.Colour.gold())
 
-            roles = db.get_reaction4role(inter.guild_id)[:10]
+            roles = db.get_data('reaction4role', 'role, reaction', guild_id=inter.guild_id)[:10]
             for role, react in roles:
                 emb.add_field(name='', value=f'{react} - <@&{role}>', inline=False)
 
@@ -139,7 +143,7 @@ class DistributionCommands(commands.Cog):
         description='Удалить роль из автовыдачи по эмодзи',
         default_member_permissions=disnake.Permissions(8)
     )
-    async def del_role(self, inter: disnake.ApplicationCommandInteraction, role: disnake.Role):
+    async def distribution_del_role(self, inter: disnake.ApplicationCommandInteraction, role: disnake.Role):
         """
         Удаляет связку роль - реакция на сервере.
 
@@ -148,7 +152,8 @@ class DistributionCommands(commands.Cog):
         :return:
         """
 
-        reaction = db.delete_reaction4role(inter.guild_id, role.id)
+        reaction = db.get_data('reaction4role', 'reaction', guild_id=inter.guild_id, role=role.id)
+        db.delete_date('reaction4role', guild_id=inter.guild_id, role=role.id)
 
         if reaction:
             reaction = reaction[0][0]
@@ -158,9 +163,9 @@ class DistributionCommands(commands.Cog):
                 'чтобы добавить роль к раздаче.', ephemeral=True)
             return
 
-        logger.info(f'[CALL] <@{inter.author.id}> /distribution_add_role')
+        logger.info(f'[CALL] <@{inter.author.id}> /distribution_del_role')
 
-        info = db.get_guilds(inter.guild_id)[0][4:]
+        info = db.get_data('guilds', id=inter.guild_id)[0][4:6]
         if not all(info):
             await inter.response.send_message(
                 'Связка роль - реакция удалена, используйте /distribution_new_message, '
@@ -171,7 +176,7 @@ class DistributionCommands(commands.Cog):
                             description='Поставьте реакцию для получения соответствующей роли',
                             colour=disnake.Colour.gold())
 
-        roles = db.get_reaction4role(inter.guild_id)[:10]
+        roles = db.get_data('reaction4role', 'role, reaction', guild_id=inter.guild_id)[:10]
         for role, react in roles:
             emb.add_field(name='', value=f'{react} - <@&{role}>', inline=False)
 

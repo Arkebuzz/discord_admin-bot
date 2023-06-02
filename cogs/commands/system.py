@@ -1,19 +1,16 @@
-import random
-
 import disnake
 
 from disnake.ext import commands
 
 from main import db
 from utils.logger import logger
-from utils.free_games import search_free_games
 
 
 def key_sort(a):
     return a.name
 
 
-class OtherCommands(commands.Cog):
+class SystemCommands(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
 
@@ -31,17 +28,15 @@ class OtherCommands(commands.Cog):
 
         emb = disnake.Embed(title=f'Информация о боте "{self.bot.user.name}"', color=disnake.Colour.gold())
         emb.set_thumbnail(self.bot.user.avatar)
-        emb.add_field(name='Версия:', value='v0.8.3')
+        emb.add_field(name='Версия:', value='v0.9')
         emb.add_field(name='Серверов:', value=len(self.bot.guilds))
         emb.add_field(name='Описание:', value='Бот создан для упрощения работы админов.', inline=False)
         emb.add_field(name='Что нового:',
-                      value='```diff\nv0.8.3\n'
-                            '+Перезапуск бота не ломает голосования.\n'
-                            '+Теперь можно задать параметр сортировки топа пользователей.\n'
-                            '+Добавлена команда /roll\n'
-                            '+Добавлена команда /free_steam_games\n'
-                            '~Теперь боты и удаленные пользователи не участвуют в топах.\n'
-                            '~Исправлены ошибки.\n'
+                      value='```diff\nv0.9\n'
+                            '+Переработана команда /free_steam_games -> /free_games, '
+                            'добавлена поддержка EpicGames и GOG.\n'
+                            '+Добавлена возможность включения оповещений о появлении новых бесплатных игр.\n'
+                            '~Незначительные улучшения и исправление ошибок.\n'
                             '```', inline=False)
         emb.set_footer(text='@Arkebuzz#7717\n'
                             'https://github.com/Arkebuzz/discord_admin-bot',
@@ -65,8 +60,9 @@ class OtherCommands(commands.Cog):
 
         emb = disnake.Embed(
             title='Помощь',
-            description='Я умею раздавать роли, вести статистику пользователей сервера и создавать голосования.'
-                        '\n\nСписок команд (некоторые команды доступны только администраторам сервера):',
+            description='Я умею раздавать роли, вести статистику пользователей сервера, устраивать голосования '
+                        'и сообщать о новых раздачах игр.\n\n'
+                        'Список команд (некоторые команды доступны только администраторам сервера):',
             color=disnake.Color.blue()
         )
 
@@ -92,7 +88,7 @@ class OtherCommands(commands.Cog):
         :return:
         """
 
-        info = db.get_guilds(inter.guild_id)
+        info = db.get_data('guilds', id=inter.guild_id)
         emb = disnake.Embed(title='Проверка разрешений бота', color=disnake.Color.gold())
 
         if info and info[0][2]:
@@ -125,7 +121,7 @@ class OtherCommands(commands.Cog):
 
             emb.add_field('Право на назначение ролей в автораздаче:', '', inline=False)
 
-            for role in db.get_reaction4role(inter.guild_id):
+            for role in db.get_data('reaction4role', 'role, reaction', guild_id=inter.guild_id):
                 emb.add_field('',
                               f'<@&{role[0]}> ' +
                               ('✅' if self.bot.get_guild(inter.guild_id).get_role(role[0]).is_assignable() else '⛔'))
@@ -145,7 +141,7 @@ class OtherCommands(commands.Cog):
         description='Выбрать канал лога для бота',
         default_member_permissions=disnake.Permissions(8)
     )
-    async def settings(self, inter: disnake.ApplicationCommandInteraction, channel: disnake.TextChannel):
+    async def set_log_channel(self, inter: disnake.ApplicationCommandInteraction, channel: disnake.TextChannel):
         """
         Слэш-команда, производит настройку канала для бота на сервере.
 
@@ -166,6 +162,31 @@ class OtherCommands(commands.Cog):
                                               'бот не может писать в переданном канале.', ephemeral=True)
 
     @commands.slash_command(
+        name='set_games_channel',
+        description='Выбрать канал лога для бота',
+        default_member_permissions=disnake.Permissions(8)
+    )
+    async def set_games_channel(self, inter: disnake.ApplicationCommandInteraction, channel: disnake.TextChannel):
+        """
+        Слэш-команда, производит настройку канала для бота на сервере.
+
+        :param inter:
+        :param channel:
+        :return:
+        """
+
+        if channel.permissions_for(inter.guild.me).send_messages:
+            db.update_guild_settings(inter.guild_id, game_id=channel.id)
+
+            await inter.response.send_message('Выполнена настройка канала оповещений для бота, '
+                                              f'теперь канал с игровыми оповещениями - {channel}', ephemeral=True)
+
+            logger.info(f'[CALL] <@{inter.author.id}> /set_games_channel channel: {channel}')
+        else:
+            await inter.response.send_message('Невозможно выполнить настройку канала оповещений для бота, '
+                                              'бот не может писать в переданном канале.', ephemeral=True)
+
+    @commands.slash_command(
         name='ping',
         description='Задержка бота',
     )
@@ -181,46 +202,8 @@ class OtherCommands(commands.Cog):
 
         await inter.response.send_message(f'Пинг: {round(self.bot.latency * 1000)}мс', ephemeral=True)
 
-    @commands.slash_command(
-        name='roll',
-        description='Случайное число от 0 до 100',
-    )
-    async def roll(self, inter: disnake.ApplicationCommandInteraction):
-        """
-        Слэш-команда, отправляет в ответ случайное число от 0 до 100.
-
-        :param inter:
-        :return:
-        """
-
-        logger.info(f'[CALL] <@{inter.author.id}> /roll')
-
-        await inter.response.send_message(random.randint(0, 100))
-
-    @commands.slash_command(
-        name='free_steam_games',
-        description='Список игр, которые раздают в Steam',
-    )
-    async def games(self, inter: disnake.ApplicationCommandInteraction):
-        """
-        Слэш-команда, отправляет в ответ список игр, ставших бесплатными.
-
-        :param inter:
-        :return:
-        """
-
-        logger.info(f'[CALL] <@{inter.author.id}> /free_steam_games')
-
-        emb = disnake.Embed(title='Сейчас бесплатны', colour=disnake.Colour.gold())
-
-        games = await search_free_games()
-        for game in games[:25]:
-            emb.add_field(game[0], '\n'.join(game[1:]), inline=False)
-
-        await inter.response.send_message(embed=emb)
-
 
 def setup(bot: commands.Bot):
     """Регистрация команд бота."""
 
-    bot.add_cog(OtherCommands(bot))
+    bot.add_cog(SystemCommands(bot))
