@@ -139,7 +139,7 @@ async def check_new_games(bot: commands.InteractionBot):
                     logger.info(f'[IN PROGRESS] game is no longer free - {title}')
 
                 for game in cur_games - bd_games:
-                    db.add_game(game)
+                    db.add_game(list(game[:3]) + [game[-1]])
 
                     dlc = ' (DLC)' if game[1] else ''
                     emb = disnake.Embed(title=f'{game[0]}{dlc} сейчас бесплатна!', colour=disnake.Colour.gold())
@@ -179,7 +179,7 @@ class MainEvents(commands.Cog):
         logger.info('Bot started')
 
         await refresh(self.bot)
-        await asyncio.sleep(600)
+        await asyncio.sleep(10)
         asyncio.ensure_future(check_voting_timeout(self.bot))
         asyncio.ensure_future(check_new_games(self.bot))
 
@@ -250,7 +250,7 @@ class ReactionEvents(commands.Cog):
 
     @commands.Cog.listener()
     async def on_raw_reaction_add(self, payload: disnake.RawReactionActionEvent):
-        mes = db.get_data('guilds', payload.guild_id)[0][4:]
+        mes = db.get_data('guilds', id=payload.guild_id)[0][4:]
 
         if payload.user_id == self.bot.user.id or payload.channel_id != mes[0] or payload.message_id != mes[1]:
             return
@@ -269,7 +269,7 @@ class ReactionEvents(commands.Cog):
 
     @commands.Cog.listener()
     async def on_raw_reaction_remove(self, payload: disnake.RawReactionActionEvent):
-        mes = db.get_data('guilds', payload.guild_id)[0][4:]
+        mes = db.get_data('guilds', id=payload.guild_id)[0][4:]
 
         if payload.user_id == self.bot.user.id or payload.channel_id != mes[0] or payload.message_id != mes[1]:
             return

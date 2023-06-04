@@ -18,32 +18,33 @@ class VotingCommands(commands.Cog):
         description='Создать голосование',
     )
     async def voting_new(self, inter: disnake.ApplicationCommandInteraction,
-                     question: str = commands.Param(description='Вопрос голосования'),
-                     timer: str = commands.Param(
-                         description='Время на голосование (1m/1h/1d)',
-                         default='1d', min_length=2
-                     ),
-                     min_choices: int = commands.Param(
-                         description='Минимальное число вариантов, которое может выбрать голосующий',
-                         default=1, min_value=1, max_value=10
-                     ),
-                     max_choices: int = commands.Param(
-                         description='Максимальное число вариантов, которое может выбрать голосующий',
-                         default=1, min_value=1, max_value=10
-                     ),
-                     answer0: str | None = commands.Param(description='Вариант ответа', default=None),
-                     answer1: str | None = commands.Param(description='Вариант ответа', default=None),
-                     answer2: str | None = commands.Param(description='Вариант ответа', default=None),
-                     answer3: str | None = commands.Param(description='Вариант ответа', default=None),
-                     answer4: str | None = commands.Param(description='Вариант ответа', default=None),
-                     answer5: str | None = commands.Param(description='Вариант ответа', default=None),
-                     answer6: str | None = commands.Param(description='Вариант ответа', default=None),
-                     answer7: str | None = commands.Param(description='Вариант ответа', default=None),
-                     answer8: str | None = commands.Param(description='Вариант ответа', default=None),
-                     answer9: str | None = commands.Param(description='Вариант ответа', default=None),
-                     ):
+                         question: str = commands.Param(description='Вопрос голосования'),
+                         timer: str = commands.Param(
+                             description='Время на голосование (1m/1h/1d)',
+                             default='1d', min_length=2
+                         ),
+                         min_choices: int = commands.Param(
+                             description='Минимальное число вариантов, которое может выбрать голосующий',
+                             default=1, min_value=1, max_value=10
+                         ),
+                         max_choices: int = commands.Param(
+                             description='Максимальное число вариантов, которое может выбрать голосующий',
+                             default=1, min_value=1, max_value=10
+                         ),
+                         answer0: str | None = commands.Param(description='Вариант ответа', default=None),
+                         answer1: str | None = commands.Param(description='Вариант ответа', default=None),
+                         answer2: str | None = commands.Param(description='Вариант ответа', default=None),
+                         answer3: str | None = commands.Param(description='Вариант ответа', default=None),
+                         answer4: str | None = commands.Param(description='Вариант ответа', default=None),
+                         answer5: str | None = commands.Param(description='Вариант ответа', default=None),
+                         answer6: str | None = commands.Param(description='Вариант ответа', default=None),
+                         answer7: str | None = commands.Param(description='Вариант ответа', default=None),
+                         answer8: str | None = commands.Param(description='Вариант ответа', default=None),
+                         answer9: str | None = commands.Param(description='Вариант ответа', default=None),
+                         ):
         """
         Слэш-команда, создаёт новое голосование.
+
         """
 
         sl = {'m': 60, 'h': 3600, 'd': 86400}
