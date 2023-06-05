@@ -74,6 +74,10 @@ class DB:
                        name TEXT,
                        dlc INTEGER,
                        url TEXT PRIMARY KEY,
+                       description TEXT,
+                       rating TEXT,
+                       date TEXT,
+                       image TEXT,
                        store INTEGER);
                        ''')
 
@@ -263,7 +267,7 @@ class DB:
         :param game
         :return: None
         """
-        self.cur.execute('INSERT INTO games VALUES(?, ?, ?, ?)',
+        self.cur.execute('INSERT INTO games VALUES(?, ?, ?, ?, ?, ?, ?, ?)',
                          (*game,))
 
         self.conn.commit()

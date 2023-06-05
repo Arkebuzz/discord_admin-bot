@@ -127,9 +127,10 @@ async def check_new_games(bot: commands.InteractionBot):
 
         try:
             games = await search_games()
+            games_dict = {name: info for name, *info in games}
 
-            cur_games = set((g[:3]) + (g[-1], ) for g in games)
-            bd_games = set(db.get_data('games'))
+            cur_games = set((g[0], g[2]) for g in games)
+            bd_games = set(db.get_data('games', 'name, url'))
 
             if cur_games != bd_games:
                 for game in bd_games - cur_games:
@@ -139,7 +140,9 @@ async def check_new_games(bot: commands.InteractionBot):
                     logger.info(f'[IN PROGRESS] game is no longer free - {title}')
 
                 for game in cur_games - bd_games:
-                    db.add_game(game[:3] + (game[-1], ))
+                    game = [game[0]] + games_dict[game[0]]
+
+                    db.add_game(game)
 
                     dlc = ' (DLC)' if game[1] else ''
                     emb = disnake.Embed(title=f'{game[0]}{dlc} сейчас бесплатна!', colour=disnake.Colour.gold())
@@ -179,7 +182,7 @@ class MainEvents(commands.Cog):
         logger.info('Bot started')
 
         await refresh(self.bot)
-        await asyncio.sleep(300)
+
         asyncio.ensure_future(check_voting_timeout(self.bot))
         asyncio.ensure_future(check_new_games(self.bot))
 

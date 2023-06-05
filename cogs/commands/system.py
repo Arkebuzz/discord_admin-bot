@@ -28,11 +28,13 @@ class SystemCommands(commands.Cog):
 
         emb = disnake.Embed(title=f'Информация о боте "{self.bot.user.name}"', color=disnake.Colour.gold())
         emb.set_thumbnail(self.bot.user.avatar)
-        emb.add_field(name='Версия:', value='v0.9.2')
+        emb.add_field(name='Версия:', value='v0.9.3')
         emb.add_field(name='Серверов:', value=len(self.bot.guilds))
         emb.add_field(name='Описание:', value='Бот создан для упрощения работы админов.', inline=False)
         emb.add_field(name='Что нового:',
-                      value='```diff\nv0.9.2\n'
+                      value='```diff\nv0.9.3\n'
+                            '+Теперь учитываются бесплатные игры из Steam без русского языка.\n'
+                            '+Добавлены команды отключения оповещений о приходе/уходе участников и бесплатных игр.\n'
                             '~Незначительные улучшения и исправление ошибок.\n'
                             '```', inline=False)
         emb.set_footer(text='@Arkebuzz#7717\n'
@@ -159,6 +161,25 @@ class SystemCommands(commands.Cog):
                                               'бот не может писать в переданном канале.', ephemeral=True)
 
     @commands.slash_command(
+        name='disable_log_channel',
+        description='Удалить канал лога для бота',
+        default_member_permissions=disnake.Permissions(8)
+    )
+    async def disable_log_channel(self, inter: disnake.ApplicationCommandInteraction):
+        """
+        Слэш-команда, производит настройку канала для бота на сервере.
+
+        :param inter:
+        :return:
+        """
+
+        db.update_guild_settings(inter.guild_id, log_id=None)
+
+        await inter.response.send_message('Канал-лог отключен.', ephemeral=True)
+
+        logger.info(f'[CALL] <@{inter.author.id}> /disable_log_channel')
+
+    @commands.slash_command(
         name='set_games_channel',
         description='Выбрать канал лога для бота',
         default_member_permissions=disnake.Permissions(8)
@@ -182,6 +203,25 @@ class SystemCommands(commands.Cog):
         else:
             await inter.response.send_message('Невозможно выполнить настройку канала оповещений для бота, '
                                               'бот не может писать в переданном канале.', ephemeral=True)
+
+    @commands.slash_command(
+        name='disable_games_channel',
+        description='Удалить канал игр для бота',
+        default_member_permissions=disnake.Permissions(8)
+    )
+    async def disable_games_channel(self, inter: disnake.ApplicationCommandInteraction):
+        """
+        Слэш-команда, производит настройку канала для бота на сервере.
+
+        :param inter:
+        :return:
+        """
+
+        db.update_guild_settings(inter.guild_id, game_id=None)
+
+        await inter.response.send_message('Канал игр отключен.', ephemeral=True)
+
+        logger.info(f'[CALL] <@{inter.author.id}> /disable_games_channel')
 
     @commands.slash_command(
         name='ping',

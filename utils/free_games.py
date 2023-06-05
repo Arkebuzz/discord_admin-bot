@@ -6,7 +6,7 @@ from bs4 import BeautifulSoup
 
 
 async def search_steam_games():
-    url = 'https://store.steampowered.com/search/?l=russian&maxprice=free&specials=1'
+    url = 'https://store.steampowered.com/search/?l=russian&maxprice=free&supportedlang=any&specials=1'
 
     async with aiohttp.ClientSession() as session:
         async with session.get(url) as resp:
@@ -45,7 +45,7 @@ async def search_steam_games():
         # 'Платформы: ' +
         # ', '.join(a['class'][-1] for a in game.find_all('span', {'class': re.compile('platform_img')}))
 
-        res += [(
+        res += [[
             game.find('span', {'class': 'title'}).text + ' (' +  # Название
             game.find('div', {'class': 'col search_released responsive_secondrow'}).text + ')',  # Дата выхода
 
@@ -62,7 +62,7 @@ async def search_steam_games():
             game.find('img').get('srcset').split()[-2],  # Картинка
 
             0  # Тип магазина
-        )]
+        ]]
 
     return res
 
@@ -90,7 +90,7 @@ async def search_epic_games():
 
         img = [g['url'] for g in game['keyImages'] if g["type"] == "OfferImageWide"][0]
 
-        res += [(
+        res += [[
             game['title'],  # Название
 
             0,  # Дополнение?
@@ -106,7 +106,7 @@ async def search_epic_games():
             img,  # Картинка
 
             1  # Тип магазина
-        )]
+        ]]
 
     return res
 
@@ -142,7 +142,7 @@ async def search_gog_games():
         else:
             rating = None
 
-        res += [(
+        res += [[
             game.find('div', {'class': 'product-tile__title'})['title'],  # Название
 
             dlc,  # Дополнение?
@@ -158,7 +158,7 @@ async def search_gog_games():
             game.find('source')['srcset'].split()[-2],  # Картинка
 
             2  # Тип магазина
-        )]
+        ]]
 
     return res
 
@@ -167,7 +167,6 @@ async def search_games():
     res = await search_steam_games()
     res += await search_gog_games()
     res += await search_epic_games()
-
     return res
 
 
