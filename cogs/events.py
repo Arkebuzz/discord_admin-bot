@@ -134,7 +134,7 @@ async def check_new_games(bot: commands.InteractionBot):
 
             if cur_games != bd_games:
                 for game in bd_games - cur_games:
-                    db.delete_date('games', url=game[2])
+                    db.delete_date('games', url=game[1])
 
                     title = game[0].encode('windows-1251', 'replace').decode('windows-1251')
                     logger.info(f'[IN PROGRESS] game is no longer free - {title}')

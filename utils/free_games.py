@@ -26,7 +26,7 @@ async def search_steam_games():
 
         date = game_info.find('p', {'class': 'game_purchase_discount_quantity'}).text.split('	')[0]
 
-        description = game_info.find('div', {'id': 'game_area_description'}).contents[2].text.lstrip()
+        description = game_info.find('div', {'id': 'game_area_description'}).text[13:1000].lstrip()
 
         if game_info.find('div', {'class': 'game_area_bubble game_area_dlc_bubble'}) is not None:
             dlc = 1

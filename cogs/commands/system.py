@@ -28,13 +28,11 @@ class SystemCommands(commands.Cog):
 
         emb = disnake.Embed(title=f'Информация о боте "{self.bot.user.name}"', color=disnake.Colour.gold())
         emb.set_thumbnail(self.bot.user.avatar)
-        emb.add_field(name='Версия:', value='v0.9.3')
+        emb.add_field(name='Версия:', value='v0.9.4')
         emb.add_field(name='Серверов:', value=len(self.bot.guilds))
         emb.add_field(name='Описание:', value='Бот создан для упрощения работы админов.', inline=False)
         emb.add_field(name='Что нового:',
-                      value='```diff\nv0.9.3\n'
-                            '+Теперь учитываются бесплатные игры из Steam без русского языка.\n'
-                            '+Добавлены команды отключения оповещений о приходе/уходе участников и бесплатных игр.\n'
+                      value='```diff\nv0.9.4\n'
                             '~Незначительные улучшения и исправление ошибок.\n'
                             '```', inline=False)
         emb.set_footer(text='@Arkebuzz#7717\n'
