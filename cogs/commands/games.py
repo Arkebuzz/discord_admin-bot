@@ -9,8 +9,7 @@ from utils.logger import logger
 
 PARAMS_STORE = {'Все': None,
                 'Steam': 0,
-                'EpicGames': 1,
-                'GOG': 2}
+                'EpicGames': 1}
 
 PARAMS_DLC = {'Все': None,
               'Только игры': 0,

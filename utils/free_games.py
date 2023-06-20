@@ -68,7 +68,10 @@ async def search_steam_games():
 
 
 async def search_epic_games():
-    url = 'https://store-site-backend-static.ak.epicgames.com/freeGamesPromotions?'
+    url = (
+        'https://store-site-backend-static.ak.epicgames.com/'
+        'freeGamesPromotions?locale=ru_RU&country=RU&allowCountries=RU'
+    )
 
     async with aiohttp.ClientSession() as session:
         async with session.get(url) as resp:
@@ -78,6 +81,7 @@ async def search_epic_games():
     res = []
 
     for game in contents:
+
         if game['title'] == 'Mystery Game':
             continue
 
@@ -85,7 +89,7 @@ async def search_epic_games():
             date = 'Можно забрать до ' + '/'.join(
                 game['promotions']['promotionalOffers'][0]['promotionalOffers'][0]['endDate'][:10].split('-')[::-1]
             ) + '.'
-        except (IndexError, KeyError):
+        except (IndexError, KeyError, TypeError):
             continue
 
         img = [g['url'] for g in game['keyImages'] if g["type"] == "OfferImageWide"][0]
@@ -95,7 +99,7 @@ async def search_epic_games():
 
             0,  # Дополнение?
 
-            'https://store.epicgames.com/ru/p/' + game['productSlug'],  # Ссылка
+            'https://store.epicgames.com/ru/p/' + game['catalogNs']['mappings'][0]['pageSlug'],  # Ссылка
 
             game['description'],  # Описание
 
@@ -111,61 +115,8 @@ async def search_epic_games():
     return res
 
 
-async def search_gog_games():
-    url = 'https://www.gog.com/ru/games?priceRange=0,0&discounted=true'
-
-    async with aiohttp.ClientSession() as session:
-        async with session.get(url) as resp:
-            contents = await resp.text()
-
-    soup = BeautifulSoup(contents, 'html.parser')
-    contents = soup.find_all('a', {'class': 'product-tile product-tile--grid'})
-
-    res = []
-
-    for game in contents:
-        async with aiohttp.ClientSession() as session:
-            async with session.get(game['href']) as resp:
-                game_info = await resp.text()
-
-        game_info = BeautifulSoup(game_info, 'html.parser')
-
-        if game.find('span', {'class': 'title-label small ng-star-inserted'}) is not None:
-            dlc = 1
-        else:
-            dlc = 0
-
-        rating = game_info.find('script', {'type': 'application/ld+json'}).text
-        ind = rating.find('ratingValue')
-        if ind != -1:
-            rating = rating[ind + 15:rating.find('"', ind + 15)]
-        else:
-            rating = None
-
-        res += [[
-            game.find('div', {'class': 'product-tile__title'})['title'],  # Название
-
-            dlc,  # Дополнение?
-
-            game['href'],  # Ссылка
-
-            game_info.find('div', {'class': 'description'}).text.split('\n')[0],  # Описание
-
-            rating,  # Рейтинг
-
-            None,  # Срок скидки в gog не известен
-
-            game.find('source')['srcset'].split()[-2],  # Картинка
-
-            2  # Тип магазина
-        ]]
-
-    return res
-
-
 async def search_games():
     res = await search_steam_games()
-    res += await search_gog_games()
     res += await search_epic_games()
     return res
 
@@ -175,8 +126,6 @@ if __name__ == '__main__':
 
     loop = asyncio.new_event_loop()
 
-    print('GOG')
-    print(*loop.run_until_complete(search_gog_games()), sep='\n', end='\n\n')
     print('EPIC')
     print(*loop.run_until_complete(search_epic_games()), sep='\n', end='\n\n')
     print('STEAM')
