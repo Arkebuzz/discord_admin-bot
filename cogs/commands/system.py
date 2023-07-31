@@ -28,13 +28,12 @@ class SystemCommands(commands.Cog):
 
         emb = disnake.Embed(title=f'Информация о боте "{self.bot.user.name}"', color=disnake.Colour.gold())
         emb.set_thumbnail(self.bot.user.avatar)
-        emb.add_field(name='Версия:', value='v0.9.5')
+        emb.add_field(name='Версия:', value='v0.9.6')
         emb.add_field(name='Серверов:', value=len(self.bot.guilds))
         emb.add_field(name='Описание:', value='Бот создан для упрощения работы админов.', inline=False)
         emb.add_field(name='Что нового:',
-                      value='```diff\nv0.9.5\n'
+                      value='```diff\nv0.9.6\n'
                             '~Незначительные улучшения и исправление ошибок.\n'
-                            '-Поиск бесплатных игр в GOG убран.'
                             '```', inline=False)
         emb.set_footer(text='@Arkebuzz#7717\n'
                             'https://github.com/Arkebuzz/discord_admin-bot',

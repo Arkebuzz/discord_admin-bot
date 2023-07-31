@@ -69,8 +69,7 @@ async def search_steam_games():
 
 async def search_epic_games():
     url = (
-        'https://store-site-backend-static.ak.epicgames.com/'
-        'freeGamesPromotions?locale=ru_RU&country=RU&allowCountries=RU'
+        'https://store-site-backend-static.ak.epicgames.com/freeGamesPromotions?locale=ru&country=RU&allowCountries=RU'
     )
 
     async with aiohttp.ClientSession() as session:
@@ -90,6 +89,9 @@ async def search_epic_games():
                 game['promotions']['promotionalOffers'][0]['promotionalOffers'][0]['endDate'][:10].split('-')[::-1]
             ) + '.'
         except (IndexError, KeyError, TypeError):
+            continue
+
+        if game['price']['totalPrice']['fmtPrice']['discountPrice'] != '0':
             continue
 
         img = [g['url'] for g in game['keyImages'] if g["type"] == "OfferImageWide"][0]

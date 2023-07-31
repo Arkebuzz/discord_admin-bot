@@ -334,7 +334,7 @@ class MessageEvents(commands.Cog):
     async def on_message(self, mes: disnake.Message):
         guild = db.get_data('guilds', id=mes.guild.id)
 
-        if not guild or not guild[0][1] or mes.author.bot or mes.author.name != 'Deleted User':
+        if not guild or not guild[0][1] or mes.author.bot or mes.author.name == 'Deleted User':
             return
 
         name = mes.author.name.encode('windows-1251', 'replace').decode('windows-1251')
