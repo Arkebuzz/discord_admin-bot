@@ -1,7 +1,6 @@
 import random
 
 import disnake
-
 from disnake.ext import commands
 
 from main import db
@@ -17,7 +16,7 @@ PARAMS_DLC = {'Все': None,
 
 
 class GameCommands(commands.Cog):
-    def __init__(self, bot: commands.Bot):
+    def __init__(self, bot: commands.InteractionBot):
         self.bot = bot
 
     @commands.slash_command(
@@ -27,9 +26,6 @@ class GameCommands(commands.Cog):
     async def roll(self, inter: disnake.ApplicationCommandInteraction):
         """
         Слэш-команда, отправляет в ответ случайное число от 0 до 100.
-
-        :param inter:
-        :return:
         """
 
         logger.info(f'[CALL] <@{inter.author.id}> /roll')
@@ -38,21 +34,17 @@ class GameCommands(commands.Cog):
 
     @commands.slash_command(
         name='free_games',
-        description='Список игр, которые раздают в Steam, GOG или EpicGames',
+        description='Список игр, которые раздают в Steam или EpicGames',
     )
-    async def free_games(self, inter: disnake.ApplicationCommandInteraction,
-                         store: str = commands.Param(choices=PARAMS_STORE.keys(), default='Все',
-                                                     description='Выберите магазин'),
-                         dlc: str = commands.Param(choices=PARAMS_DLC.keys(), default='Все',
-                                                   description='Показывать дополнения?')
-                         ):
+    async def free_games(
+            self, inter: disnake.ApplicationCommandInteraction,
+            store: str = commands.Param(choices=list(PARAMS_STORE.keys()), default='Все',
+                                        description='Выберите магазин'),
+            dlc: str = commands.Param(choices=list(PARAMS_DLC.keys()), default='Все',
+                                      description='Показывать дополнения?')
+    ):
         """
         Слэш-команда, отправляет в ответ список игр, ставших бесплатными.
-
-        :param inter:
-        :param store:
-        :param dlc:
-        :return:
         """
 
         logger.info(f'[CALL] <@{inter.author.id}> /free_steam_games')
@@ -77,7 +69,7 @@ class GameCommands(commands.Cog):
         await inter.response.send_message(embed=emb)
 
 
-def setup(bot: commands.Bot):
+def setup(bot: commands.InteractionBot):
     """Регистрация команд бота."""
 
     bot.add_cog(GameCommands(bot))

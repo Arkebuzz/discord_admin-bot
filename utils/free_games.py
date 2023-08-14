@@ -6,6 +6,20 @@ from bs4 import BeautifulSoup
 
 
 async def search_steam_games():
+    """
+    Поиск игр, ставших бесплатными в Steam.
+
+    :return: [[Название + Дата выхода,
+               Дополнение (0,1),
+               Ссылка,
+               Описание,
+               Рейтинг,
+               До какого момента можно забрать,
+               Картинка,
+               Тип магазина
+             ]]
+    """
+
     url = 'https://store.steampowered.com/search/?l=russian&maxprice=free&supportedlang=any&specials=1'
 
     async with aiohttp.ClientSession() as session:
@@ -68,6 +82,20 @@ async def search_steam_games():
 
 
 async def search_epic_games():
+    """
+    Поиск игр, ставших бесплатными в EpicGames.
+
+    :return: [[Название + Дата выхода,
+               Дополнение (0,1),
+               Ссылка,
+               Описание,
+               Рейтинг,
+               До какого момента можно забрать,
+               Картинка,
+               Тип магазина
+             ]]
+    """
+
     url = (
         'https://store-site-backend-static.ak.epicgames.com/freeGamesPromotions?locale=ru&country=RU&allowCountries=RU'
     )
@@ -81,7 +109,7 @@ async def search_epic_games():
 
     for game in contents:
 
-        if game['title'] == 'Mystery Game':
+        if game['title'] == 'Mystery Game' or game['price']['totalPrice']['fmtPrice']['discountPrice'] != '0':
             continue
 
         try:
@@ -118,6 +146,20 @@ async def search_epic_games():
 
 
 async def search_games():
+    """
+    Поиск игр, ставших бесплатными в Steam и EpicGames.
+
+    :return: [[Название + Дата выхода,
+               Дополнение (0,1),
+               Ссылка,
+               Описание,
+               Рейтинг,
+               До какого момента можно забрать,
+               Картинка,
+               Тип магазина
+             ]]
+    """
+
     res = await search_steam_games()
     res += await search_epic_games()
     return res

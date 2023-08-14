@@ -21,7 +21,7 @@ class Voting(disnake.ui.View):
         super().__init__(timeout=time)
 
     @disnake.ui.button(label='Голосовать', style=disnake.ButtonStyle.green)
-    async def vote(self, button: disnake.ui.Button, inter: disnake.ApplicationCommandInteraction):
+    async def vote(self, _, inter: disnake.ApplicationCommandInteraction):
         class SelectMenu(disnake.ui.View):
             """
             Класс добавляет к сообщению меню с выбором.
@@ -58,7 +58,7 @@ class Voting(disnake.ui.View):
             await inter.delete_original_response()
 
     @disnake.ui.button(label='Результаты', style=disnake.ButtonStyle.green)
-    async def results(self, button: disnake.ui.Button, inter: disnake.ApplicationCommandInteraction):
+    async def results(self, _, inter: disnake.ApplicationCommandInteraction):
         res = [info[2] for info in db.get_data('votes', voting_id=self.mes_id)]
         stat = []
 

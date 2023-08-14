@@ -17,7 +17,7 @@ PARAM_SORT = {
 
 
 class StatisticCommands(commands.Cog):
-    def __init__(self, bot: commands.Bot):
+    def __init__(self, bot: commands.InteractionBot):
         self.bot = bot
 
     @commands.slash_command(
@@ -25,6 +25,10 @@ class StatisticCommands(commands.Cog):
         description='Статистика сервера',
     )
     async def server_info(self, inter: disnake.ApplicationCommandInteraction):
+        """
+        Слэш-команда, отправляет в ответ статистику сервера.
+        """
+
         guild = inter.guild
         info = db.get_data('users', '*, num_charact / messages', guild_id=guild.id)
         exp = sum(us[3] for us in info) // 2
@@ -43,6 +47,7 @@ class StatisticCommands(commands.Cog):
         emb.set_footer(text=f'ID: {guild.id}')
 
         await inter.response.send_message(embed=emb)
+
         logger.info(f'[CALL] <@{inter.author.id}> /server_info')
 
     @commands.slash_command(
@@ -50,6 +55,10 @@ class StatisticCommands(commands.Cog):
         description='Статистика пользователя',
     )
     async def user_info(self, inter: disnake.ApplicationCommandInteraction, user: disnake.Member = None):
+        """
+        Слэш-команда, отправляет в ответ статистику пользователя.
+        """
+
         if user is None:
             user = inter.author
 
@@ -82,15 +91,19 @@ class StatisticCommands(commands.Cog):
         emb.set_footer(text=f'ID: {user.id}')
 
         await inter.response.send_message(embed=emb, ephemeral=True)
+
         logger.info(f'[CALL] <@{inter.author.id}> /user_info')
 
     @commands.slash_command(
-        name='user_top',
-        description='Топ пользователей по количеству опыта',
+        name='top_users',
+        description='Топ пользователей',
     )
     async def user_top(self, inter: disnake.ApplicationCommandInteraction,
-                       sort_by: str = commands.Param(choices=PARAM_SORT.keys(), default='опыту',
+                       sort_by: str = commands.Param(choices=list(PARAM_SORT.keys()), default='опыту',
                                                      description='Сортировать по')):
+        """
+        Слэш-команда, отправляет в ответ топ пользователей.
+        """
 
         info = db.get_data('users', '*, num_charact / messages', [PARAM_SORT[sort_by][0] + ' DESC', 'user_name ASC'],
                            guild_id=inter.guild_id)
@@ -98,7 +111,7 @@ class StatisticCommands(commands.Cog):
         number = [i[1] for i in info].index(inter.author.id)
 
         emb = disnake.Embed(title=f'Топ пользователей по {sort_by}', colour=disnake.Colour.gold())
-        emb.add_field('', f'{inter.author.name}, вы находитесь на {number + 1} месте.', inline=False)
+        emb.add_field('', f'{inter.author.name}, ты находишься на {number + 1} месте.', inline=False)
         emb.add_field(
             '',
             '```' +
@@ -108,10 +121,11 @@ class StatisticCommands(commands.Cog):
         )
 
         await inter.response.send_message(embed=emb)
+
         logger.info(f'[CALL] <@{inter.author.id}> /user_top')
 
 
-def setup(bot: commands.Bot):
+def setup(bot: commands.InteractionBot):
     """Регистрация команд бота."""
 
     bot.add_cog(StatisticCommands(bot))

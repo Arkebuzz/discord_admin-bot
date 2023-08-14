@@ -1,7 +1,7 @@
 import disnake
-
 from disnake.ext import commands
 
+from config import __version__, __version_info__
 from main import db
 from utils.logger import logger
 
@@ -11,7 +11,7 @@ def key_sort(a):
 
 
 class SystemCommands(commands.Cog):
-    def __init__(self, bot: commands.Bot):
+    def __init__(self, bot: commands.InteractionBot):
         self.bot = bot
 
     @commands.slash_command(
@@ -21,26 +21,21 @@ class SystemCommands(commands.Cog):
     async def info(self, inter: disnake.ApplicationCommandInteraction):
         """
         Слэш-команда, отправляет в ответ информацию о боте.
-
-        :param inter:
-        :return:
         """
 
         emb = disnake.Embed(title=f'Информация о боте "{self.bot.user.name}"', color=disnake.Colour.gold())
         emb.set_thumbnail(self.bot.user.avatar)
-        emb.add_field(name='Версия:', value='v0.9.6')
+        emb.add_field(name='Версия:', value=__version__)
         emb.add_field(name='Серверов:', value=len(self.bot.guilds))
         emb.add_field(name='Описание:', value='Бот создан для упрощения работы админов.', inline=False)
         emb.add_field(name='Что нового:',
-                      value='```diff\nv0.9.6\n'
-                            '~Незначительные улучшения и исправление ошибок.\n'
-                            '```', inline=False)
+                      value=__version_info__, inline=False)
         emb.set_footer(text='@Arkebuzz#7717\n'
                             'https://github.com/Arkebuzz/discord_admin-bot',
-                       icon_url='https://cdn.discordapp.com/avatars/542244057947308063/'
-                                '4b8f2972eb7475f44723ac9f84d9c7ec.png?size=1024')
+                       icon_url='https://avatars.githubusercontent.com/u/115876609?v=4')
 
         await inter.response.send_message(embed=emb)
+
         logger.info(f'[CALL] <@{inter.author.id}> /info')
 
     @commands.slash_command(
@@ -50,9 +45,6 @@ class SystemCommands(commands.Cog):
     async def help(self, inter: disnake.ApplicationCommandInteraction):
         """
         Слэш-команда, отправляет сообщение с описанием команд.
-
-        :param inter:
-        :return:
         """
 
         emb = disnake.Embed(
@@ -80,9 +72,6 @@ class SystemCommands(commands.Cog):
     async def check_permissions(self, inter: disnake.ApplicationCommandInteraction):
         """
         Слэш-команда, проверяет верно ли настроены разрешения бота.
-
-        :param inter:
-        :return:
         """
 
         info = db.get_data('guilds', id=inter.guild_id)
@@ -100,7 +89,7 @@ class SystemCommands(commands.Cog):
                           value='',
                           inline=False)
 
-        emb.add_field(name='Добавление реакций: ' +
+        emb.add_field(name='Добавление реакций в данном канале: ' +
                            ('✅' if inter.channel.permissions_for(inter.guild.me).add_reactions else '⛔'),
                       value='',
                       inline=False)
@@ -134,17 +123,13 @@ class SystemCommands(commands.Cog):
         logger.info(f'[CALL] <@{inter.author.id}> /check_permissions')
 
     @commands.slash_command(
-        name='set_log_channel',
+        name='log_channel_set',
         description='Выбрать канал лога для бота',
         default_member_permissions=disnake.Permissions(8)
     )
     async def set_log_channel(self, inter: disnake.ApplicationCommandInteraction, channel: disnake.TextChannel):
         """
         Слэш-команда, производит настройку канала для бота на сервере.
-
-        :param inter:
-        :param channel:
-        :return:
         """
 
         if channel.permissions_for(inter.guild.me).send_messages:
@@ -158,17 +143,16 @@ class SystemCommands(commands.Cog):
             await inter.response.send_message('Невозможно выполнить настройку канала-лога для бота, '
                                               'бот не может писать в переданном канале.', ephemeral=True)
 
+            logger.info(f'[CALL] <@{inter.author.id}> /set_log_channel forbidden sent message')
+
     @commands.slash_command(
-        name='disable_log_channel',
+        name='log_channel_disable',
         description='Удалить канал лога для бота',
         default_member_permissions=disnake.Permissions(8)
     )
     async def disable_log_channel(self, inter: disnake.ApplicationCommandInteraction):
         """
         Слэш-команда, производит настройку канала для бота на сервере.
-
-        :param inter:
-        :return:
         """
 
         db.update_guild_settings(inter.guild_id, log_id=None)
@@ -178,17 +162,13 @@ class SystemCommands(commands.Cog):
         logger.info(f'[CALL] <@{inter.author.id}> /disable_log_channel')
 
     @commands.slash_command(
-        name='set_games_channel',
+        name='games_channel_set',
         description='Выбрать канал лога для бота',
         default_member_permissions=disnake.Permissions(8)
     )
     async def set_games_channel(self, inter: disnake.ApplicationCommandInteraction, channel: disnake.TextChannel):
         """
         Слэш-команда, производит настройку канала для бота на сервере.
-
-        :param inter:
-        :param channel:
-        :return:
         """
 
         if channel.permissions_for(inter.guild.me).send_messages:
@@ -202,17 +182,16 @@ class SystemCommands(commands.Cog):
             await inter.response.send_message('Невозможно выполнить настройку канала оповещений для бота, '
                                               'бот не может писать в переданном канале.', ephemeral=True)
 
+            logger.info(f'[CALL] <@{inter.author.id}> /set_log_channel forbidden sent message')
+
     @commands.slash_command(
-        name='disable_games_channel',
+        name='games_channel_disable',
         description='Удалить канал игр для бота',
         default_member_permissions=disnake.Permissions(8)
     )
     async def disable_games_channel(self, inter: disnake.ApplicationCommandInteraction):
         """
         Слэш-команда, производит настройку канала для бота на сервере.
-
-        :param inter:
-        :return:
         """
 
         db.update_guild_settings(inter.guild_id, game_id=None)
@@ -228,9 +207,6 @@ class SystemCommands(commands.Cog):
     async def ping(self, inter: disnake.ApplicationCommandInteraction):
         """
         Слэш-команда, отправляет в ответ пинг.
-
-        :param inter:
-        :return:
         """
 
         logger.info(f'[CALL] <@{inter.author.id}> /ping')
@@ -238,7 +214,7 @@ class SystemCommands(commands.Cog):
         await inter.response.send_message(f'Пинг: {round(self.bot.latency * 1000)}мс', ephemeral=True)
 
 
-def setup(bot: commands.Bot):
+def setup(bot: commands.InteractionBot):
     """Регистрация команд бота."""
 
     bot.add_cog(SystemCommands(bot))

@@ -4,7 +4,7 @@ from config import PATH_DB
 
 
 class DB:
-    def __init__(self, path=PATH_DB):
+    def __init__(self, path=PATH_DB) -> None:
         self.path = path
         self.conn = sqlite3.connect(path)
         self.conn.execute('PRAGMA foreign_keys = ON;')
@@ -12,7 +12,7 @@ class DB:
 
         self.create_db()
 
-    def create_db(self):
+    def create_db(self) -> None:
         """
         Создаёт БД.
 
@@ -83,14 +83,15 @@ class DB:
 
         self.conn.commit()
 
-    def get_data(self, table, columns='*', orders=None, **filters):
+    def get_data(self, table, columns='*', orders=None, **filters) -> list:
         """
+        Получение строк из БД по введенным параметрам.
 
         :param table: название таблицы
         :param columns: названия нужных столбцов
         :param orders: ['column DESC/ASC']
         :param filters: столбец = значение
-        :return:
+        :return: [[строка1], [строка2], ...]
         """
 
         if filters and orders:
@@ -110,7 +111,15 @@ class DB:
 
         return self.cur.fetchall()
 
-    def delete_date(self, table, **filters):
+    def delete_date(self, table, **filters) -> None:
+        """
+        Удаление строк из БД.
+
+        :param table: название таблицы
+        :param filters: столбец = значение
+        :return: None
+        """
+
         if filters:
             self.cur.execute(f'DELETE FROM {table} WHERE ' +
                              ' AND '.join(f'"{key}" = "{value}"' for key, value in filters.items()))
@@ -119,45 +128,45 @@ class DB:
 
         self.conn.commit()
 
-    def update_guild_settings(self, guild_id, analyze=None, log_id=None, role_id=None, distribution=None, game_id=None):
+    def update_guild_settings(self, guild_id, analyze=-1, log_id=-1, role_id=-1, distribution=-1, game_id=-1):
         """
-        Обновляет лог-канал и сообщение с автораздачей на сервере.
+        Обновляет лог и игровой каналы, роль по умолчанию и сообщение с автораздачей на сервере.
 
         :param guild_id: ID сервера.
         :param analyze: Сервер проанализирован?
         :param log_id: ID лог-канала.
         :param role_id: ID роли по умолчанию.
         :param distribution: (ID, ID) ID канала и ID сообщения с автораздачей ролей.
-        :param game_id: ID канала для оповещений об играх
+        :param game_id: ID канала для оповещений об играх.
         :return: None
         """
 
-        if log_id is None and role_id is None and distribution is None and analyze is None and game_id is None:
+        if log_id == -1 and role_id == -1 and distribution == -1 and analyze == -1 and game_id == -1:
             self.cur.execute('INSERT INTO guilds VALUES(?, 0, NULL, NULL, NULL, NULL, NULL) '
                              'ON CONFLICT (id) DO NOTHING',
                              (guild_id,))
 
-        if analyze is not None:
+        if analyze != -1:
             self.cur.execute('INSERT INTO guilds VALUES(?, ?, NULL, NULL, NULL, NULL, NULL) '
                              'ON CONFLICT (id) DO UPDATE SET analyze = ?',
                              (guild_id, analyze, analyze))
 
-        if log_id is not None:
+        if log_id != -1:
             self.cur.execute('INSERT INTO guilds VALUES(?, 0, ?, NULL, NULL, NULL, NULL) '
                              'ON CONFLICT (id) DO UPDATE SET log_channel = ?',
                              (guild_id, log_id, log_id))
 
-        if role_id is not None:
+        if role_id != -1:
             self.cur.execute('INSERT INTO guilds VALUES(?, 0, NULL, ?, NULL, NULL, NULL) '
                              'ON CONFLICT (id) DO UPDATE SET default_role = ?',
                              (guild_id, role_id, role_id))
 
-        if distribution is not None:
+        if distribution != -1:
             self.cur.execute('INSERT INTO guilds VALUES(?, 0, NULL, NULL, ?, ?, NULL) '
                              'ON CONFLICT (id) DO UPDATE SET distrib_channel = ?, distrib_message = ?',
                              (guild_id, *distribution, *distribution))
 
-        if game_id is not None:
+        if game_id != -1:
             self.cur.execute('INSERT INTO guilds VALUES(?, 0, NULL, NULL, NULL, NULL, ?) '
                              'ON CONFLICT (id) DO UPDATE SET game_channel = ?',
                              (guild_id, game_id, game_id))
@@ -171,7 +180,7 @@ class DB:
         :param guild_id: ID сервера.
         :param role_id: ID роли.
         :param reaction: Эмодзи.
-        :return: None
+        :return: None | -1
         """
 
         self.update_guild_settings(guild_id)
@@ -245,7 +254,7 @@ class DB:
         :param mes_id: ID сообщения с голосованием (ID голосования).
         :param user_info: (guild_id, user_id, user_name) проголосовавшего.
         :param choice: [str] массив с вариантами ответов.
-        :return:
+        :return: None
         """
 
         self.cur.execute('SELECT * FROM votes WHERE voting_id = ? AND user_id = ?', (mes_id, user_info[1]))

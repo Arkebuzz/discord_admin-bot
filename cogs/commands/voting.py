@@ -1,7 +1,6 @@
 import time
 
 import disnake
-
 from disnake.ext import commands
 
 from main import db
@@ -10,8 +9,8 @@ from utils.logger import logger
 
 
 class VotingCommands(commands.Cog):
-    def __init__(self, bot):
-        self.bot: commands.InteractionBot = bot
+    def __init__(self, bot: commands.InteractionBot):
+        self.bot = bot
 
     @commands.slash_command(
         name='voting_new',
@@ -24,11 +23,11 @@ class VotingCommands(commands.Cog):
                              default='1d', min_length=2
                          ),
                          min_choices: int = commands.Param(
-                             description='Минимальное число вариантов, которое может выбрать голосующий',
+                             description='Минимальное число вариантов, которые может выбрать голосующий',
                              default=1, min_value=1, max_value=10
                          ),
                          max_choices: int = commands.Param(
-                             description='Максимальное число вариантов, которое может выбрать голосующий',
+                             description='Максимальное число вариантов, которые может выбрать голосующий',
                              default=1, min_value=1, max_value=10
                          ),
                          answer0: str | None = commands.Param(description='Вариант ответа', default=None),
@@ -44,7 +43,6 @@ class VotingCommands(commands.Cog):
                          ):
         """
         Слэш-команда, создаёт новое голосование.
-
         """
 
         sl = {'m': 60, 'h': 3600, 'd': 86400}
@@ -115,11 +113,16 @@ class VotingCommands(commands.Cog):
         description='Справка по голосованиям',
     )
     async def voting_help(self, inter: disnake.ApplicationCommandInteraction):
+        """
+        Слэш-команда, отправляет инструкцию по созданию и использованию голосований.
+        """
+
         emb = disnake.Embed(title='Помощь по взаимодействию с голосованиями', color=disnake.Color.blue())
 
         emb.add_field(
             'Создание нового голосования:',
-            'Используйте команду /voting_new и подставьте аргументы команды в соответствии с описанием ниже.',
+            'Используй команду /voting_new и подставь аргументы команды в соответствии с описанием ниже, '
+            'чтобы создать новое голосование.',
             inline=False
         )
         emb.add_field('Аргументы функции /voting_new:', '', inline=False)
@@ -131,18 +134,19 @@ class VotingCommands(commands.Cog):
         )
         emb.add_field(
             'timer',
-            'Время отведенное на голосование, задаётся в виде целого числа и латинской буквы, по умолчанию 1d. '
+            'Время отведенное на голосование, задаётся в виде целого числа и латинской буквы, по умолчанию 1d.\n'
+            'Комбинированные записи, например 1d30m, не поддерживаются.\n'
             'Допустимые буквы: m - минуты, h - часы, d - дни. Пример значения: 30m',
             inline=False
         )
         emb.add_field(
             'min_choices',
-            'Минимальное число вариантов, которое может выбрать голосующий, число от 1 до 10, по умолчанию - 1.',
+            'Минимальное число вариантов, которые может выбрать голосующий, число от 1 до 10, по умолчанию - 1.',
             inline=False
         )
         emb.add_field(
             'max_choices',
-            'Максимальное число вариантов, которое может выбрать голосующий, число от 1 до 10, по умолчанию - 1.',
+            'Максимальное число вариантов, которые может выбрать голосующий, число от 1 до 10, по умолчанию - 1.',
             inline=False
         )
         emb.add_field(
@@ -156,10 +160,10 @@ class VotingCommands(commands.Cog):
         emb.add_field(
             'Как голосовать:',
             'Чтобы проголосовать, нужно нажать кнопку "Голосовать" под соответствующим голосованием, '
-            'после этого я отправлю Вам сообщение с выбором вариантов ответа, '
-            'где вы можете сделать свой выбор в течение 1 минуты.\n'
-            'Чтобы посмотреть текущее распределение голосов, нажмите кнопку "Результаты", после этого я отправлю '
-            'Вам сообщение с текущим распределением голосов.\n'
+            'после этого я отправлю тебе сообщение с выбором вариантов ответа, '
+            'где ты можете сделать свой выбор в течение 1 минуты.\n'
+            'Чтобы посмотреть текущее распределение голосов, нажми кнопку "Результаты", после этого я отправлю '
+            'тебе сообщение с текущим распределением голосов.\n'
             'После истечения срока голосования, возможность проголосовать пропадёт, а в оригинальном сообщении '
             'появится распределение голосов.',
             inline=False)
@@ -169,7 +173,7 @@ class VotingCommands(commands.Cog):
         logger.info(f'[CALL] <@{inter.author.id}> /voting_help')
 
 
-def setup(bot: commands.Bot):
+def setup(bot: commands.InteractionBot):
     """Регистрация команд бота."""
 
     bot.add_cog(VotingCommands(bot))

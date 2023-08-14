@@ -1,5 +1,5 @@
-disnake~=2.8.1
-emoji~=2.2.0
+disnake~=2.9.0
+emoji~=2.7.0
 tabulate~=0.9.0
-aiohttp~=3.8.4
+aiohttp~=3.8.5
 beautifulsoup4~=4.12.2
