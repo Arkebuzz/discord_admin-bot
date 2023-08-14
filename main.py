@@ -14,7 +14,7 @@ if not os.path.isdir(PATH_DATA):
 db = DB()
 
 intents = disnake.Intents.all()
-bot = commands.InteractionBot(intents=intents, test_guilds=[1065620699353464883])
+bot = commands.InteractionBot(intents=intents)
 
 bot.load_extensions('cogs/commands')
 bot.load_extension('cogs.events')
