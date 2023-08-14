@@ -184,7 +184,38 @@ class UpdateDB:
 
         logger.debug('[FINISHED] check new games')
 
+    async def check_voice_downtime(self, guilds=None):
+        """
+        Проверка на простой в голосовых каналах.
+        """
+
+        logger.debug('[START] check voice downtime')
+
+        guilds = guilds if guilds else {}
+
+        for voice in self.bot.voice_clients:
+            voice: disnake.VoiceClient = voice
+
+            if voice.is_playing():
+                guilds[voice.guild.id] = 0
+
+            else:
+                downtime = guilds.setdefault(voice.guild.id, 0)
+
+                if downtime > 10:
+                    await voice.disconnect()
+                    del guilds[voice.guild.id]
+                    logger.info(f'[IN PROGRESS] check voice downtime {voice.guild.id} is disconnect')
+                else:
+                    guilds[voice.guild.id] = downtime + 1
+
+        logger.debug('[FINISHED] check voice downtime')
+
+        return guilds
+
     async def update(self):
+        guilds = None
+
         while True:
             try:
                 await self.check_new_games()
@@ -196,5 +227,10 @@ class UpdateDB:
                     await self.check_voting_timeout()
                 except Exception as e:
                     logger.exception('[IN PROGRESS] check_voting_timeout', e)
+
+                try:
+                    guilds = await self.check_voice_downtime(guilds)
+                except Exception as e:
+                    logger.exception('[IN PROGRESS] check_voice_downtime', e)
 
                 await asyncio.sleep(60)

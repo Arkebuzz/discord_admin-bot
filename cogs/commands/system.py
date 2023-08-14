@@ -89,6 +89,18 @@ class SystemCommands(commands.Cog):
                           value='',
                           inline=False)
 
+        if info and info[0][6]:
+            emb.add_field(
+                name='Отправка сообщений в канале игр: ' +
+                     ('✅' if self.bot.get_channel(info[0][6]).permissions_for(inter.guild.me).send_messages else '⛔'),
+                value='',
+                inline=False
+            )
+        else:
+            emb.add_field(name='Отправка сообщений в канале игр: ⚠️',
+                          value='',
+                          inline=False)
+
         emb.add_field(name='Добавление реакций в данном канале: ' +
                            ('✅' if inter.channel.permissions_for(inter.guild.me).add_reactions else '⛔'),
                       value='',

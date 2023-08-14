@@ -62,9 +62,9 @@ class MainEvents(commands.Cog):
             try:
                 await channel.send('Анализ сообщений завершён.')
                 await channel.send('Если вам нужны оповещения о присоединении/уходе участников, то выберите для этого '
-                                   'канал командой /log_channel_set')
+                                   'канал командой /log_channel_set.')
                 await channel.send('Если вам нужны оповещения о новых раздачах игр, то выберите для этого '
-                                   'канал командой /games_channel_set')
+                                   'канал командой /games_channel_set.')
                 await channel.send('Рекомендуется вызвать команду /check_permissions, чтобы удостовериться, '
                                    'что бот имеет необходимые права.')
                 break
