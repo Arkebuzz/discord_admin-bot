@@ -3,7 +3,7 @@ import asyncio
 import disnake
 from disnake.ext import commands
 
-from cogs.functions import send_warning_message, add_guild2db, refresh, UpdateDB
+from cogs.functions import send_warning_message, add_guild2db, refresh, UpdateDB, key_sort
 from main import db
 from utils.logger import logger
 
@@ -42,14 +42,17 @@ class MainEvents(commands.Cog):
                                    'однако статистика пользователей и сервера будет выводиться некорректно.')
 
                 emb = disnake.Embed(
-                    description='Я умею раздавать роли, вести статистику пользователей сервера, устраивать голосования '
-                                'и сообщать о новых раздачах игр.\n\n'
+                    description='Я умею раздавать роли, вести статистику пользователей сервера, устраивать голосования,'
+                                ' сообщать о новых раздачах игр и транслировать музыку.\n\n'
                                 'Список команд (некоторые команды доступны только администраторам сервера):',
-                    color=disnake.Color.gold()
+                    color=disnake.Color.blue()
                 )
 
-                emb.add_field('Команда', '\n'.join(com.name for com in self.bot.slash_commands))
-                emb.add_field('Описание', '\n'.join(com.description for com in self.bot.slash_commands))
+                for com in sorted(list(self.bot.slash_commands), key=key_sort):
+                    emb.add_field('/' + com.name, com.description, inline=False)
+
+                emb.add_field('Для просмотра помощи по использованию голосований смотри /voting_help.', '',
+                              inline=False)
 
                 await channel.send(embed=emb)
 
@@ -58,19 +61,16 @@ class MainEvents(commands.Cog):
 
         await add_guild2db(self.bot, guild.id)
 
-        for channel in guild.text_channels:
-            try:
-                await channel.send('Анализ сообщений завершён.')
-                await channel.send('Если вам нужны оповещения о присоединении/уходе участников, то выберите для этого '
-                                   'канал командой /log_channel_set.')
-                await channel.send('Если вам нужны оповещения о новых раздачах игр, то выберите для этого '
-                                   'канал командой /games_channel_set.')
-                await channel.send('Рекомендуется вызвать команду /check_permissions, чтобы удостовериться, '
-                                   'что бот имеет необходимые права.')
-                break
-
-            except disnake.errors.Forbidden:
-                continue
+        await send_warning_message(guild, 'Анализ сообщений завершён.')
+        await send_warning_message(
+            guild,
+            'Если вам нужны оповещения о присоединении/уходе участников, то выберите для этого '
+            'канал командой /log_channel_set.\n'
+            'Если вам нужны оповещения о новых раздачах игр, то выберите для этого '
+            'канал командой /games_channel_set.\n'
+            'Рекомендуется вызвать команду /check_permissions, чтобы удостовериться, '
+            'что бот имеет необходимые права.\n'
+        )
 
     @commands.Cog.listener()
     async def on_guild_remove(self, guild: disnake.Intents.guilds):
@@ -171,8 +171,10 @@ class MemberEvents(commands.Cog):
                     logger.info(f'[NEW USER] forbidden log-channel {guild[2]} from {guild[0]}')
                     db.update_guild_settings(guild[0], log_id=None)
 
-                    await send_warning_message(member.guild,
-                                               'Бот не может писать в канале лога, установка канала-лога сброшена!')
+                    await send_warning_message(
+                        member.guild,
+                        'Бот не может писать в канале лога, установка канала-лога сброшена!'
+                    )
 
             if guild[3]:
                 try:
@@ -181,9 +183,11 @@ class MemberEvents(commands.Cog):
                     logger.info(f'[NEW USER] forbidden role')
                     db.update_guild_settings(guild[0], role_id=None)
 
-                    await send_warning_message(member.guild,
-                                               f'Бот не может назначить роль по умолчанию на <@{member.id}>.\n'
-                                               'Роль по умолчанию сброшена!')
+                    await send_warning_message(
+                        member.guild,
+                        f'Бот не может назначить роль по умолчанию на <@{member.id}>.\n'
+                        'Роль по умолчанию сброшена!'
+                    )
 
             logger.info(f'[NEW USER] <{member.id}>')
 
@@ -198,8 +202,10 @@ class MemberEvents(commands.Cog):
                 logger.info(f'[DEL USER] forbidden log-channel {guild[0][2]} from {guild[0][0]}')
                 db.update_guild_settings(guild[0][0], log_id=None)
 
-                await send_warning_message(self.bot.get_guild(payload.guild_id),
-                                           'Бот не может писать в канале лога, установка канала-лога сброшена!')
+                await send_warning_message(
+                    self.bot.get_guild(payload.guild_id),
+                    'Бот не может писать в канале лога, установка канала-лога сброшена!'
+                )
 
             logger.info(f'[DEL USER] <{payload.user.id}>')
 

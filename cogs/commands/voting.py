@@ -3,8 +3,8 @@ import time
 import disnake
 from disnake.ext import commands
 
-from main import db
 from cogs.buttons import Voting
+from main import db
 from utils.logger import logger
 
 
@@ -14,7 +14,7 @@ class VotingCommands(commands.Cog):
 
     @commands.slash_command(
         name='voting_new',
-        description='Создать голосование',
+        description='Создать голосование.',
     )
     async def voting_new(self, inter: disnake.ApplicationCommandInteraction,
                          question: str = commands.Param(description='Вопрос голосования'),
@@ -110,7 +110,7 @@ class VotingCommands(commands.Cog):
 
     @commands.slash_command(
         name='voting_help',
-        description='Справка по голосованиям',
+        description='Получить справку по голосованиям.',
     )
     async def voting_help(self, inter: disnake.ApplicationCommandInteraction):
         """

@@ -58,6 +58,8 @@ class Music(commands.Cog):
 
     @staticmethod
     async def join(inter):
+        """Присоединение к голосовому каналу"""
+
         try:
             if inter.guild.voice_client is None:
                 await inter.user.voice.channel.connect()
@@ -77,6 +79,8 @@ class Music(commands.Cog):
             await inter.edit_original_response('Я не могу присоединиться к вашему каналу.')
 
     def next_music(self, guild, channel):
+        """Переключение на следующий трек"""
+
         logger.info(f'[IN PROGRESS] {guild.id} next_music')
 
         queue = guilds_queue.setdefault(guild.id, [])
@@ -86,6 +90,8 @@ class Music(commands.Cog):
         self.bot.loop.create_task(self.play(guild, channel))
 
     async def play(self, guild, channel):
+        """Запуск очереди музыки"""
+
         queue = guilds_queue.setdefault(guild.id, [])
         vc: disnake.VoiceClient = guild.voice_client
 
@@ -100,7 +106,8 @@ class Music(commands.Cog):
         name='music_add2queue',
         description='Добавить музыку в очередь.'
     )
-    async def music_add2queue(self, inter: disnake.ApplicationCommandInteraction, name: str):
+    async def music_add2queue(self, inter: disnake.ApplicationCommandInteraction,
+                              name: str = commands.Param(description='Название трека или ссылка')):
         """
         Добавляет музыку по ссылке в очередь.
         """
@@ -121,7 +128,7 @@ class Music(commands.Cog):
 
     @commands.slash_command(
         name='music_queue',
-        description='Очередь музыки.'
+        description='Получить очередь музыки.'
     )
     async def music_queue(self, inter: disnake.ApplicationCommandInteraction):
         """
@@ -179,7 +186,7 @@ class Music(commands.Cog):
 
     @commands.slash_command(
         name='music_next',
-        description='Переключиться на следующий трек.'
+        description='Переключиться на следующую музыку.'
     )
     async def music_next(self, inter: disnake.ApplicationCommandInteraction):
         """
@@ -213,7 +220,10 @@ class Music(commands.Cog):
         except (AttributeError, TypeError):
             pass
 
-        del guilds_queue[inter.guild_id]
+        try:
+            del guilds_queue[inter.guild_id]
+        except KeyError:
+            pass
 
         await inter.response.send_message('Очередь музыки очищена.')
 
@@ -229,11 +239,15 @@ class Music(commands.Cog):
         logger.info(f'[CALL] <@{inter.author.id}> /music_stop')
 
         try:
-            await inter.guild.voice_client.disconnect(force=False)
+            await inter.guild.voice_client.disconnect()
+
         except (AttributeError, commands.errors.CommandInvokeError):
             pass
 
-        del guilds_queue[inter.guild_id]
+        try:
+            del guilds_queue[inter.guild_id]
+        except KeyError:
+            pass
 
         await inter.response.send_message('Отключение выполнено, очередь музыки очищена.')
 

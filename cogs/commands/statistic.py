@@ -1,5 +1,4 @@
 import disnake
-
 from disnake.ext import commands
 from tabulate import tabulate
 
@@ -22,7 +21,7 @@ class StatisticCommands(commands.Cog):
 
     @commands.slash_command(
         name='server_info',
-        description='Статистика сервера',
+        description='Получить статистику сервера.',
     )
     async def server_info(self, inter: disnake.ApplicationCommandInteraction):
         """
@@ -52,7 +51,7 @@ class StatisticCommands(commands.Cog):
 
     @commands.slash_command(
         name='user_info',
-        description='Статистика пользователя',
+        description='Получить статистику пользователя.',
     )
     async def user_info(self, inter: disnake.ApplicationCommandInteraction, user: disnake.Member = None):
         """
@@ -96,11 +95,14 @@ class StatisticCommands(commands.Cog):
 
     @commands.slash_command(
         name='top_users',
-        description='Топ пользователей',
+        description='Получить топ пользователей.',
     )
-    async def user_top(self, inter: disnake.ApplicationCommandInteraction,
-                       sort_by: str = commands.Param(choices=list(PARAM_SORT.keys()), default='опыту',
-                                                     description='Сортировать по')):
+    async def user_top(
+            self, inter: disnake.ApplicationCommandInteraction,
+            sort_by: str = commands.Param(
+                choices=list(PARAM_SORT.keys()), default='опыту', description='Сортировать по'
+            )
+    ):
         """
         Слэш-команда, отправляет в ответ топ пользователей.
         """

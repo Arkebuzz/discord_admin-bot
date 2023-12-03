@@ -1,7 +1,6 @@
 import re
 
 import aiohttp
-
 from bs4 import BeautifulSoup
 
 
@@ -40,12 +39,12 @@ async def search_steam_games():
 
         date = game_info.find('p', {'class': 'game_purchase_discount_quantity'}).text.split('	')[0]
 
-        description = game_info.find('div', {'id': 'game_area_description'}).text[13:1000].lstrip()
-
         if game_info.find('div', {'class': 'game_area_bubble game_area_dlc_bubble'}) is not None:
             dlc = 1
+            description = game_info.find('div', {'id': 'game_area_description'}).text[33:1000].strip() + '...'
         else:
             dlc = 0
+            description = game_info.find('div', {'id': 'game_area_description'}).text[13:1000].strip() + '...'
 
         try:
             rating = (
@@ -61,7 +60,7 @@ async def search_steam_games():
 
         res += [[
             game.find('span', {'class': 'title'}).text + ' (' +  # Название
-            game.find('div', {'class': 'col search_released responsive_secondrow'}).text + ')',  # Дата выхода
+            game.find('div', {'class': 'col search_released responsive_secondrow'}).text.strip() + ')',  # Дата выхода
 
             dlc,  # Дополнение (0,1)?
 
@@ -109,20 +108,17 @@ async def search_epic_games():
 
     for game in contents:
 
-        if game['title'] == 'Mystery Game' or game['price']['totalPrice']['fmtPrice']['discountPrice'] != '0':
+        if game['title'] == 'Mystery Game' or game['price']['totalPrice']['discountPrice'] != 0:
             continue
 
         try:
             date = 'Можно забрать до ' + '/'.join(
-                game['promotions']['promotionalOffers'][0]['promotionalOffers'][0]['endDate'][:10].split('-')[::-1]
+                game['price']['lineOffers'][0]['appliedRules'][0]['endDate'][:10].split('-')[::-1]
             ) + '.'
         except (IndexError, KeyError, TypeError):
             continue
 
-        if game['price']['totalPrice']['fmtPrice']['discountPrice'] != '0':
-            continue
-
-        img = [g['url'] for g in game['keyImages'] if g["type"] == "OfferImageWide"][0]
+        img = next(g['url'] for g in game['keyImages'] if g["type"] == "OfferImageWide")
 
         res += [[
             game['title'],  # Название

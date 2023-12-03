@@ -1,7 +1,7 @@
 #### Как запустить:
 
 1. Установить зависимости из [requirements.txt](requirements.txt).
-2. Установить [ffmpeg.exe](https://ffmpeg.org/) и положить его в [utils](utils).
+2. Скачать [ffmpeg.exe](https://ffmpeg.org/) и положить его в [utils](utils).
 3. Ввести в [config.py](config.py) TOKEN - токен бота.
 4. Запускать с помощью [main.py](main.py)
 

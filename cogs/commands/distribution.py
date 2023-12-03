@@ -1,6 +1,5 @@
 import disnake
 import emoji
-
 from disnake.ext import commands
 
 from main import db
@@ -13,7 +12,7 @@ class DistributionCommands(commands.Cog):
 
     @commands.slash_command(
         name='set_default_role',
-        description='Изменить стандартную роль для новых участников',
+        description='Изменить стандартную роль для новых участников.',
         default_member_permissions=disnake.Permissions(8)
     )
     async def set_default_role(self, inter: disnake.ApplicationCommandInteraction, role: disnake.Role):
@@ -41,7 +40,7 @@ class DistributionCommands(commands.Cog):
 
     @commands.slash_command(
         name='distribution_new_message',
-        description='Отправить сообщение автовыдачи ролей по эмодзи',
+        description='Отправить сообщение автовыдачи ролей по эмодзи.',
         default_member_permissions=disnake.Permissions(8)
     )
     async def distribution_new_message(self, inter: disnake.ApplicationCommandInteraction):
@@ -75,11 +74,13 @@ class DistributionCommands(commands.Cog):
 
     @commands.slash_command(
         name='distribution_add_role',
-        description='Добавить роль к автовыдаче по эмодзи',
+        description='Добавить роль к автовыдаче по эмодзи.',
         default_member_permissions=disnake.Permissions(8)
     )
-    async def distribution_add_role(self, inter: disnake.ApplicationCommandInteraction, role: disnake.Role,
-                                    reaction: str):
+    async def distribution_add_role(
+            self, inter: disnake.ApplicationCommandInteraction, role: disnake.Role,
+            reaction: str = commands.Param(description='Смайлик, который будет связан с этой ролью')
+    ):
         """
         Обновляет связку роль - реакция на сервере.
         """
@@ -144,7 +145,7 @@ class DistributionCommands(commands.Cog):
 
     @commands.slash_command(
         name='distribution_del_role',
-        description='Удалить роль из автовыдачи по эмодзи',
+        description='Удалить роль из автовыдачи по эмодзи.',
         default_member_permissions=disnake.Permissions(8)
     )
     async def distribution_del_role(self, inter: disnake.ApplicationCommandInteraction, role: disnake.Role):

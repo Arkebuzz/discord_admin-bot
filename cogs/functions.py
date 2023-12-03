@@ -4,10 +4,14 @@ import time
 import disnake
 from disnake.ext import commands
 
-from main import db
 from cogs.buttons import Voting
-from utils.logger import logger
+from main import db
 from utils.free_games import search_games
+from utils.logger import logger
+
+
+def key_sort(a):
+    return a.name
 
 
 async def send_warning_message(guild: disnake.guild.Guild, message: str):
@@ -175,9 +179,11 @@ class UpdateDB:
                             logger.info(f'[IN PROGRESS] forbidden channel {guild[6]}')
                             db.update_guild_settings(guild[0], game_id=None)
 
-                            await send_warning_message(self.bot.get_guild(guild[0]),
-                                                       'Бот не может писать в канале с игровыми оповещениями, '
-                                                       'установка канала с игровыми оповещениями сброшена!')
+                            await send_warning_message(
+                                self.bot.get_guild(guild[0]),
+                                'Бот не может писать в канале с игровыми оповещениями, '
+                                'установка канала с игровыми оповещениями сброшена!'
+                            )
 
                 title = game[0].encode('windows-1251', 'replace').decode('windows-1251')
                 logger.info(f'[IN PROGRESS] new free game - {title}')

@@ -1,13 +1,10 @@
 import disnake
 from disnake.ext import commands
 
+from cogs.functions import key_sort
 from config import __version__, __version_info__
 from main import db
 from utils.logger import logger
-
-
-def key_sort(a):
-    return a.name
 
 
 class SystemCommands(commands.Cog):
@@ -16,7 +13,7 @@ class SystemCommands(commands.Cog):
 
     @commands.slash_command(
         name='info',
-        description='Информация о боте',
+        description='Получить информацию о боте.',
     )
     async def info(self, inter: disnake.ApplicationCommandInteraction):
         """
@@ -40,7 +37,7 @@ class SystemCommands(commands.Cog):
 
     @commands.slash_command(
         name='help',
-        description='Описание команд бота'
+        description='Получить описание команд бота.'
     )
     async def help(self, inter: disnake.ApplicationCommandInteraction):
         """
@@ -49,16 +46,16 @@ class SystemCommands(commands.Cog):
 
         emb = disnake.Embed(
             title='Помощь',
-            description='Я умею раздавать роли, вести статистику пользователей сервера, устраивать голосования '
-                        'и сообщать о новых раздачах игр.\n\n'
+            description='Я умею раздавать роли, вести статистику пользователей сервера, устраивать голосования, '
+                        'сообщать о новых раздачах игр и транслировать музыку.\n\n'
                         'Список команд (некоторые команды доступны только администраторам сервера):',
             color=disnake.Color.blue()
         )
 
         for com in sorted(list(self.bot.slash_commands), key=key_sort):
-            emb.add_field('/' + com.name, com.description + '.', inline=False)
+            emb.add_field('/' + com.name, com.description, inline=False)
 
-        emb.add_field('Для просмотра помощи по созданию голосований смотри /voting_help', '', inline=False)
+        emb.add_field('Для просмотра помощи по использованию голосований смотри /voting_help', '', inline=False)
 
         await inter.response.send_message(embed=emb, ephemeral=True)
 
@@ -66,7 +63,7 @@ class SystemCommands(commands.Cog):
 
     @commands.slash_command(
         name='check_permissions',
-        description='Проверка разрешений бота',
+        description='Проверить разрешения бота.',
         default_member_permissions=disnake.Permissions(8)
     )
     async def check_permissions(self, inter: disnake.ApplicationCommandInteraction):
@@ -136,7 +133,7 @@ class SystemCommands(commands.Cog):
 
     @commands.slash_command(
         name='log_channel_set',
-        description='Выбрать канал лога для бота',
+        description='Выбрать канал лога, для оповещений о изменении состава участников сервера.',
         default_member_permissions=disnake.Permissions(8)
     )
     async def set_log_channel(self, inter: disnake.ApplicationCommandInteraction, channel: disnake.TextChannel):
@@ -159,7 +156,7 @@ class SystemCommands(commands.Cog):
 
     @commands.slash_command(
         name='log_channel_disable',
-        description='Удалить канал лога для бота',
+        description='Удалить канал лога.',
         default_member_permissions=disnake.Permissions(8)
     )
     async def disable_log_channel(self, inter: disnake.ApplicationCommandInteraction):
@@ -175,7 +172,7 @@ class SystemCommands(commands.Cog):
 
     @commands.slash_command(
         name='games_channel_set',
-        description='Выбрать канал лога для бота',
+        description='Выбрать канал игр для оповещений о раздачах бесплатных игр в Steam и EpicGames.',
         default_member_permissions=disnake.Permissions(8)
     )
     async def set_games_channel(self, inter: disnake.ApplicationCommandInteraction, channel: disnake.TextChannel):
@@ -198,7 +195,7 @@ class SystemCommands(commands.Cog):
 
     @commands.slash_command(
         name='games_channel_disable',
-        description='Удалить канал игр для бота',
+        description='Удалить канал игр.',
         default_member_permissions=disnake.Permissions(8)
     )
     async def disable_games_channel(self, inter: disnake.ApplicationCommandInteraction):
@@ -214,7 +211,7 @@ class SystemCommands(commands.Cog):
 
     @commands.slash_command(
         name='ping',
-        description='Задержка бота',
+        description='Получить задержку бота.',
     )
     async def ping(self, inter: disnake.ApplicationCommandInteraction):
         """

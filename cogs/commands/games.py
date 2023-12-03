@@ -21,7 +21,7 @@ class GameCommands(commands.Cog):
 
     @commands.slash_command(
         name='roll',
-        description='Случайное число от 0 до 100',
+        description='Отправить случайное число от 0 до 100.',
     )
     async def roll(self, inter: disnake.ApplicationCommandInteraction):
         """
@@ -34,14 +34,14 @@ class GameCommands(commands.Cog):
 
     @commands.slash_command(
         name='free_games',
-        description='Список игр, которые раздают в Steam или EpicGames',
+        description='Отправить список игр, которые раздают в Steam или EpicGames.',
     )
     async def free_games(
             self, inter: disnake.ApplicationCommandInteraction,
             store: str = commands.Param(choices=list(PARAMS_STORE.keys()), default='Все',
                                         description='Выберите магазин'),
             dlc: str = commands.Param(choices=list(PARAMS_DLC.keys()), default='Все',
-                                      description='Показывать дополнения?')
+                                      description='Выберите тип игры')
     ):
         """
         Слэш-команда, отправляет в ответ список игр, ставших бесплатными.
