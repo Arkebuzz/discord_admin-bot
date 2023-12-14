@@ -14,10 +14,8 @@ ytdl_format_options = {
     'format': 'bestaudio/best',
     'outtmpl': '%(extractor)s-%(id)s-%(title)s.%(ext)s',
     'restrictfilenames': True,
-    'noplaylist': True,
     'nocheckcertificate': True,
     'ignoreerrors': False,
-    'logtostderr': False,
     'quiet': True,
     'no_warnings': True,
     'default_search': 'auto',
@@ -32,24 +30,28 @@ ffmpeg_options = {
 ytdl = yt_dlp.YoutubeDL(ytdl_format_options)
 
 guilds_queue = {}
+guilds_player = {}
 
 
 class YTDLSource(disnake.PCMVolumeTransformer):
-    def __init__(self, source: disnake.AudioSource, data: Dict[str, Any], volume: float = 0.5):
+    def __init__(self, title, source: disnake.AudioSource, volume: float = 0.5):
         super().__init__(source, volume)
 
-        self.title = data.get('title')
+        self.title = title
 
     @classmethod
-    async def from_url(cls, url, loop: asyncio.AbstractEventLoop):
-        data = await loop.run_in_executor(None, lambda: ytdl.extract_info(url, download=False))
+    async def from_url(cls, guild, url, loop: asyncio.AbstractEventLoop):
+        try:
+            data = await loop.run_in_executor(None, lambda: ytdl.extract_info(url, download=False))
+        except yt_dlp.DownloadError as e:
+            return e
 
         if 'entries' in data:
-            data = data['entries'][0]
-
-        filename = data['url']
-
-        return cls(disnake.FFmpegPCMAudio(filename, executable=PATH_FFMPEG, **ffmpeg_options), data=data)
+            for file in data['entries']:
+                guilds_queue[guild] = (
+                        guilds_queue.setdefault(guild, []) +
+                        [cls(file['title'], disnake.FFmpegPCMAudio(file['url'], executable=PATH_FFMPEG, **ffmpeg_options))]
+                )
 
 
 class Music(commands.Cog):
@@ -87,12 +89,15 @@ class Music(commands.Cog):
 
         guilds_queue[guild.id] = queue[1:] if len(queue) > 1 else []
 
-        self.bot.loop.create_task(self.play(guild, channel))
+        if not guilds_player.setdefault(guild.id, False):
+            self.bot.loop.create_task(self.play(guild, channel))
 
     async def play(self, guild, channel):
         """Запуск очереди музыки"""
 
+        guilds_player[guild.id] = True
         queue = guilds_queue.setdefault(guild.id, [])
+
         vc: disnake.VoiceClient = guild.voice_client
 
         if queue:
@@ -101,6 +106,8 @@ class Music(commands.Cog):
             logger.info(f'[IN PROGRESS] {guild.id} music_play')
         else:
             await channel.send('Добавьте музыку в очередь командой /music_add2queue.')
+
+        guilds_player[guild.id] = False
 
     @commands.slash_command(
         name='music_add2queue',
@@ -114,17 +121,20 @@ class Music(commands.Cog):
 
         logger.info(f'[CALL] <@{inter.author.id}> /music_add2queue')
 
-        await inter.response.defer()
-
-        player = await YTDLSource.from_url(name, loop=self.bot.loop)
-        guilds_queue[inter.guild_id] = guilds_queue.setdefault(inter.guild_id, []) + [player]
-
-        await inter.edit_original_response(f'Добавлено в очередь: {player.title}')
+        await inter.response.send_message('Обрабатываю...', ephemeral=True)
 
         vc: disnake.VoiceClient = inter.guild.voice_client
 
-        if vc and not vc.is_playing():
-            await self.play(inter.guild, inter.channel)
+        player = await YTDLSource.from_url(inter.guild_id, name, loop=self.bot.loop)
+
+        if type(player) is yt_dlp.utils.DownloadError:
+            await inter.edit_original_response(str(player))
+            return
+
+        if vc and not vc.is_playing() and not guilds_player.setdefault(inter.guild_id, False):
+            self.bot.loop.create_task(self.play(inter.guild, inter.channel))
+
+        await inter.edit_original_response(f'Все элементы добавлены в очередь.')
 
     @commands.slash_command(
         name='music_queue',
@@ -139,7 +149,7 @@ class Music(commands.Cog):
 
         await inter.response.send_message(
             'Очередь музыки:\n' +
-            '\n'.join(m.title for m in guilds_queue.setdefault(inter.guild_id, [])),
+            '\n'.join(m.title for m in guilds_queue.setdefault(inter.guild_id, []))[:1950],
             ephemeral=True
         )
 
@@ -161,11 +171,11 @@ class Music(commands.Cog):
 
         vc: disnake.VoiceClient = inter.guild.voice_client
 
-        if vc.is_playing():
+        if vc and vc.is_playing():
             await inter.send('Уже играет.', ephemeral=True)
-            return
 
-        await self.play(inter.guild, inter.channel)
+        elif not guilds_player.setdefault(inter.guild_id, False):
+            self.bot.loop.create_task(self.play(inter.guild, inter.channel))
 
     @commands.slash_command(
         name='music_pause',
@@ -222,6 +232,7 @@ class Music(commands.Cog):
 
         try:
             del guilds_queue[inter.guild_id]
+            del guilds_player[inter.guild_id]
         except KeyError:
             pass
 
@@ -246,6 +257,7 @@ class Music(commands.Cog):
 
         try:
             del guilds_queue[inter.guild_id]
+            del guilds_player[inter.guild_id]
         except KeyError:
             pass
 

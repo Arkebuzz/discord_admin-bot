@@ -113,19 +113,26 @@ async def search_epic_games():
 
         try:
             date = 'Можно забрать до ' + '/'.join(
-                game['price']['lineOffers'][0]['appliedRules'][0]['endDate'][:10].split('-')[::-1]
+                game['promotions']['promotionalOffers'][0]['promotionalOffers'][0]['endDate'][:10].split('-')[::-1]
             ) + '.'
         except (IndexError, KeyError, TypeError):
             continue
 
-        img = next(g['url'] for g in game['keyImages'] if g["type"] == "OfferImageWide")
+        try:
+            url = 'https://store.epicgames.com/ru/p/' + game['catalogNs']['mappings'][0]['pageSlug'],  # Ссылка
+        except (KeyError, IndexError):
+            url = 'https://store.epicgames.com/ru/p/' + game['productSlug'],  # Ссылка
+
+        dlc = 0 if game['offerType'] == 'BASE_GAME' else 1
+
+        img = game['keyImages'][0]['url']
 
         res += [[
             game['title'],  # Название
 
-            0,  # Дополнение?
+            dlc,  # Дополнение?
 
-            'https://store.epicgames.com/ru/p/' + game['catalogNs']['mappings'][0]['pageSlug'],  # Ссылка
+            url[0],  # Ссылка
 
             game['description'],  # Описание
 
