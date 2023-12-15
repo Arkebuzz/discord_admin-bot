@@ -11,10 +11,14 @@ from utils.logger import logger
 
 
 def key_sort(a):
+    """Сортировка команд по алфавиту"""
+
     return a.name
 
 
 async def send_warning_message(guild: disnake.guild.Guild, message: str):
+    """Отправка сообщения в первый канал, доступный для бота"""
+
     for ch in guild.text_channels:
         try:
             await ch.send(message)
@@ -24,9 +28,7 @@ async def send_warning_message(guild: disnake.guild.Guild, message: str):
 
 
 async def add_guild2db(bot, guild_id):
-    """
-    Добавление сервера в БД, с анализом сообщений.
-    """
+    """Добавление сервера в БД, с анализом сообщений."""
 
     logger.info(f'[IN PROGRESS] guilds refresh : {guild_id} not in DB -> starting messages analyze')
 
@@ -48,9 +50,7 @@ async def add_guild2db(bot, guild_id):
 
 
 async def refresh(bot: commands.InteractionBot):
-    """
-    Синхронизация серверов, на которых присутствует бот, и серверов в БД, а также обновление кнопок голосований.
-    """
+    """Синхронизация серверов, на которых присутствует бот, и серверов в БД, а также обновление кнопок голосований."""
 
     logger.debug('[START] guilds refresh')
 
@@ -94,9 +94,7 @@ class UpdateDB:
         self.bot = bot
 
     async def check_voting_timeout(self):
-        """
-        Завершение голосований, время которых истекло.
-        """
+        """Завершение голосований, время которых истекло."""
 
         logger.debug('[START] check voting timeout')
 
@@ -117,9 +115,11 @@ class UpdateDB:
 
                 for key in set(res):
                     d = res.count(key) / len(res)
-                    stat.append((key[:18],
-                                 '🔳' * int(d * 10) + '⬜' * (10 - int(d * 10)),
-                                 f'{round(100 * d, 2):.2f} % - {res.count(key)} голос'))
+                    stat.append(
+                        (key[:18],
+                         '🔳' * int(d * 10) + '⬜' * (10 - int(d * 10)),
+                         f'{round(100 * d, 2):.2f} % - {res.count(key)} голос')
+                    )
 
                 emb.add_field('', '**Результаты:**')
 
@@ -140,9 +140,7 @@ class UpdateDB:
         logger.debug('[FINISHED] check voting timeout')
 
     async def check_new_games(self):
-        """
-        Проверка на наличие новых игр и уведомление о них.
-        """
+        """Проверка на наличие новых игр и уведомление о них."""
 
         logger.debug('[START] check new games')
 
@@ -191,9 +189,7 @@ class UpdateDB:
         logger.debug('[FINISHED] check new games')
 
     async def check_voice_downtime(self, guilds=None):
-        """
-        Проверка на простой в голосовых каналах.
-        """
+        """Проверка на простой в голосовых каналах."""
 
         logger.debug('[START] check voice downtime')
 

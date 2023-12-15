@@ -41,9 +41,7 @@ class VotingCommands(commands.Cog):
                          answer8: str | None = commands.Param(description='Вариант ответа', default=None),
                          answer9: str | None = commands.Param(description='Вариант ответа', default=None),
                          ):
-        """
-        Слэш-команда, создаёт новое голосование.
-        """
+        """Слэш-команда, создаёт новое голосование."""
 
         sl = {'m': 60, 'h': 3600, 'd': 86400}
 
@@ -107,70 +105,6 @@ class VotingCommands(commands.Cog):
         await inter.edit_original_response(embed=emb, view=view)
 
         logger.info(f'[CALL] <@{inter.author.id}> /voting_new : question {question}')
-
-    @commands.slash_command(
-        name='voting_help',
-        description='Получить справку по голосованиям.',
-    )
-    async def voting_help(self, inter: disnake.ApplicationCommandInteraction):
-        """
-        Слэш-команда, отправляет инструкцию по созданию и использованию голосований.
-        """
-
-        emb = disnake.Embed(title='Помощь по взаимодействию с голосованиями', color=disnake.Color.blue())
-
-        emb.add_field(
-            'Создание нового голосования:',
-            'Используй команду /voting_new и подставь аргументы команды в соответствии с описанием ниже, '
-            'чтобы создать новое голосование.',
-            inline=False
-        )
-        emb.add_field('Аргументы функции /voting_new:', '', inline=False)
-
-        emb.add_field(
-            'question',
-            'Обязательный аргумент - вопрос голосования, можно передать любую строку.',
-            inline=False
-        )
-        emb.add_field(
-            'timer',
-            'Время отведенное на голосование, задаётся в виде целого числа и латинской буквы, по умолчанию 1d.\n'
-            'Комбинированные записи, например 1d30m, не поддерживаются.\n'
-            'Допустимые буквы: m - минуты, h - часы, d - дни. Пример значения: 30m',
-            inline=False
-        )
-        emb.add_field(
-            'min_choices',
-            'Минимальное число вариантов, которые может выбрать голосующий, число от 1 до 10, по умолчанию - 1.',
-            inline=False
-        )
-        emb.add_field(
-            'max_choices',
-            'Максимальное число вариантов, которые может выбрать голосующий, число от 1 до 10, по умолчанию - 1.',
-            inline=False
-        )
-        emb.add_field(
-            'answer0-9',
-            'Варианты ответов. Если не передать ни одного варианта, то голосование будет иметь варианты "Да" и "Нет".',
-            inline=False
-        )
-
-        emb.add_field('', '', inline=False)
-
-        emb.add_field(
-            'Как голосовать:',
-            'Чтобы проголосовать, нужно нажать кнопку "Голосовать" под соответствующим голосованием, '
-            'после этого я отправлю тебе сообщение с выбором вариантов ответа, '
-            'где ты можете сделать свой выбор в течение 1 минуты.\n'
-            'Чтобы посмотреть текущее распределение голосов, нажми кнопку "Результаты", после этого я отправлю '
-            'тебе сообщение с текущим распределением голосов.\n'
-            'После истечения срока голосования, возможность проголосовать пропадёт, а в оригинальном сообщении '
-            'появится распределение голосов.',
-            inline=False)
-
-        await inter.response.send_message(embed=emb, ephemeral=True)
-
-        logger.info(f'[CALL] <@{inter.author.id}> /voting_help')
 
 
 def setup(bot: commands.InteractionBot):

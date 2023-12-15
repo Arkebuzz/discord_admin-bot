@@ -13,11 +13,7 @@ class DB:
         self.create_db()
 
     def create_db(self) -> None:
-        """
-        Создаёт БД.
-
-        :return: None
-        """
+        """Создаёт БД."""
 
         self.cur.execute('''CREATE TABLE IF NOT EXISTS guilds(
                        id INTEGER PRIMARY KEY,
@@ -271,7 +267,7 @@ class DB:
 
     def add_game(self, game):
         """
-        Добавляет новую игры в БД.
+        Добавляет новую игру в БД.
 
         :param game
         :return: None

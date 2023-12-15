@@ -16,9 +16,7 @@ class DistributionCommands(commands.Cog):
         default_member_permissions=disnake.Permissions(8)
     )
     async def set_default_role(self, inter: disnake.ApplicationCommandInteraction, role: disnake.Role):
-        """
-        Обновляет связку роль - реакция на сервере.
-        """
+        """Обновляет связку роль - реакция на сервере."""
 
         if role.is_default():
             db.update_guild_settings(inter.guild_id, role_id='NULL')
@@ -44,9 +42,7 @@ class DistributionCommands(commands.Cog):
         default_member_permissions=disnake.Permissions(8)
     )
     async def distribution_new_message(self, inter: disnake.ApplicationCommandInteraction):
-        """
-        Отправляет новое сообщение с автовыдачей ролей по эмодзи.
-        """
+        """Отправляет новое сообщение с автовыдачей ролей по эмодзи."""
 
         if not inter.channel.permissions_for(inter.guild.me).add_reactions:
             await inter.response.send_message('Я не могу ставить реакции в данном канале.', ephemeral=True)
@@ -81,9 +77,7 @@ class DistributionCommands(commands.Cog):
             self, inter: disnake.ApplicationCommandInteraction, role: disnake.Role,
             reaction: str = commands.Param(description='Смайлик, который будет связан с этой ролью')
     ):
-        """
-        Обновляет связку роль - реакция на сервере.
-        """
+        """Обновляет связку роль - реакция на сервере."""
 
         if not inter.channel.permissions_for(inter.guild.me).add_reactions:
             await inter.response.send_message('Я не могу ставить реакции в данном канале.')
@@ -149,9 +143,7 @@ class DistributionCommands(commands.Cog):
         default_member_permissions=disnake.Permissions(8)
     )
     async def distribution_del_role(self, inter: disnake.ApplicationCommandInteraction, role: disnake.Role):
-        """
-        Удаляет связку роль - реакция на сервере.
-        """
+        """Удаляет связку роль - реакция на сервере."""
 
         if not inter.channel.permissions_for(inter.guild.me).add_reactions:
             await inter.response.send_message('Я не могу ставить реакции в данном канале.')

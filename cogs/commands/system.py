@@ -1,7 +1,7 @@
 import disnake
 from disnake.ext import commands
 
-from cogs.functions import key_sort
+from cogs.help_data import help_data
 from config import __version__, __version_info__
 from main import db
 from utils.logger import logger
@@ -16,9 +16,7 @@ class SystemCommands(commands.Cog):
         description='Получить информацию о боте.',
     )
     async def info(self, inter: disnake.ApplicationCommandInteraction):
-        """
-        Слэш-команда, отправляет в ответ информацию о боте.
-        """
+        """Слэш-команда, отправляет в ответ информацию о боте."""
 
         emb = disnake.Embed(title=f'Информация о боте "{self.bot.user.name}"', color=disnake.Colour.gold())
         emb.set_thumbnail(self.bot.user.avatar)
@@ -39,27 +37,27 @@ class SystemCommands(commands.Cog):
         name='help',
         description='Получить описание команд бота.'
     )
-    async def help(self, inter: disnake.ApplicationCommandInteraction):
-        """
-        Слэш-команда, отправляет сообщение с описанием команд.
-        """
+    async def help(self, inter: disnake.ApplicationCommandInteraction, command=None):
+        """Слэш-команда, отправляет сообщение с описанием команд."""
 
-        emb = disnake.Embed(
-            title='Помощь',
-            description='Я умею раздавать роли, вести статистику пользователей сервера, устраивать голосования, '
-                        'сообщать о новых раздачах игр и транслировать музыку.\n\n'
-                        'Список команд (некоторые команды доступны только администраторам сервера):',
-            color=disnake.Color.blue()
-        )
+        if command not in help_data:
+            data = (
+                'Я умею раздавать роли, вести статистику пользователей сервера, устраивать голосования, '
+                'сообщать о новых раздачах игр и транслировать музыку.\n\n'
+                'При помощи данной команды (**help**), передавая соответствующий раздел справки в аргумент **command**, '
+                'вы можете ознакомиться со справкой, приведенной практически к каждой моей команде.\n'
+                'Некоторые команды доступны только администраторам сервера.'
+            )
+        else:
+            data = help_data[command]
 
-        for com in sorted(list(self.bot.slash_commands), key=key_sort):
-            emb.add_field('/' + com.name, com.description, inline=False)
-
-        emb.add_field('Для просмотра помощи по использованию голосований смотри /voting_help', '', inline=False)
-
-        await inter.response.send_message(embed=emb, ephemeral=True)
+        await inter.response.send_message(data, ephemeral=True)
 
         logger.info(f'[CALL] <@{inter.author.id}> /help')
+
+    @help.autocomplete('command')
+    async def autocomplete(self, _, string: str):
+        return (h for h in help_data if string in h)
 
     @commands.slash_command(
         name='check_permissions',
@@ -67,9 +65,7 @@ class SystemCommands(commands.Cog):
         default_member_permissions=disnake.Permissions(8)
     )
     async def check_permissions(self, inter: disnake.ApplicationCommandInteraction):
-        """
-        Слэш-команда, проверяет верно ли настроены разрешения бота.
-        """
+        """Слэш-команда, проверяет верно ли настроены разрешения бота."""
 
         info = db.get_data('guilds', id=inter.guild_id)
         emb = disnake.Embed(title='Проверка разрешений бота', color=disnake.Color.gold())
@@ -137,9 +133,7 @@ class SystemCommands(commands.Cog):
         default_member_permissions=disnake.Permissions(8)
     )
     async def set_log_channel(self, inter: disnake.ApplicationCommandInteraction, channel: disnake.TextChannel):
-        """
-        Слэш-команда, производит настройку канала для бота на сервере.
-        """
+        """Слэш-команда, производит настройку канала для бота на сервере."""
 
         if channel.permissions_for(inter.guild.me).send_messages:
             db.update_guild_settings(inter.guild_id, log_id=channel.id)
@@ -160,9 +154,7 @@ class SystemCommands(commands.Cog):
         default_member_permissions=disnake.Permissions(8)
     )
     async def disable_log_channel(self, inter: disnake.ApplicationCommandInteraction):
-        """
-        Слэш-команда, производит настройку канала для бота на сервере.
-        """
+        """Слэш-команда, производит настройку канала для бота на сервере."""
 
         db.update_guild_settings(inter.guild_id, log_id=None)
 
@@ -176,9 +168,7 @@ class SystemCommands(commands.Cog):
         default_member_permissions=disnake.Permissions(8)
     )
     async def set_games_channel(self, inter: disnake.ApplicationCommandInteraction, channel: disnake.TextChannel):
-        """
-        Слэш-команда, производит настройку канала для бота на сервере.
-        """
+        """Слэш-команда, производит настройку канала для бота на сервере."""
 
         if channel.permissions_for(inter.guild.me).send_messages:
             db.update_guild_settings(inter.guild_id, game_id=channel.id)
@@ -199,9 +189,7 @@ class SystemCommands(commands.Cog):
         default_member_permissions=disnake.Permissions(8)
     )
     async def disable_games_channel(self, inter: disnake.ApplicationCommandInteraction):
-        """
-        Слэш-команда, производит настройку канала для бота на сервере.
-        """
+        """Слэш-команда, производит настройку канала для бота на сервере."""
 
         db.update_guild_settings(inter.guild_id, game_id=None)
 
@@ -214,9 +202,7 @@ class SystemCommands(commands.Cog):
         description='Получить задержку бота.',
     )
     async def ping(self, inter: disnake.ApplicationCommandInteraction):
-        """
-        Слэш-команда, отправляет в ответ пинг.
-        """
+        """Слэш-команда, отправляет в ответ пинг."""
 
         logger.info(f'[CALL] <@{inter.author.id}> /ping')
 

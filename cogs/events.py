@@ -58,6 +58,8 @@ class MainEvents(commands.Cog):
 
             except disnake.errors.Forbidden:
                 continue
+            
+            break
 
         await add_guild2db(self.bot, guild.id)
 

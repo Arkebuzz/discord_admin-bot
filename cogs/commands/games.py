@@ -24,9 +24,7 @@ class GameCommands(commands.Cog):
         description='Отправить случайное число от 0 до 100.',
     )
     async def roll(self, inter: disnake.ApplicationCommandInteraction):
-        """
-        Слэш-команда, отправляет в ответ случайное число от 0 до 100.
-        """
+        """Слэш-команда, отправляет в ответ случайное число от 0 до 100."""
 
         logger.info(f'[CALL] <@{inter.author.id}> /roll')
 
@@ -43,9 +41,7 @@ class GameCommands(commands.Cog):
             dlc: str = commands.Param(choices=list(PARAMS_DLC.keys()), default='Все',
                                       description='Выберите тип игры')
     ):
-        """
-        Слэш-команда, отправляет в ответ список игр, ставших бесплатными.
-        """
+        """Слэш-команда, отправляет в ответ список игр, ставших бесплатными."""
 
         logger.info(f'[CALL] <@{inter.author.id}> /free_steam_games')
 

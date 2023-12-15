@@ -7,9 +7,7 @@ db = DB()
 
 
 class Voting(disnake.ui.View):
-    """
-    Класс добавляет к сообщению 2 кнопки: продолжить и отменить.
-    """
+    """Класс добавляет к сообщению 2 кнопки: продолжить и отменить."""
 
     def __init__(self, mes_id, question, choices, time, min_values=1, max_values=1):
         self.mes_id = mes_id
@@ -61,12 +59,13 @@ class Voting(disnake.ui.View):
     async def results(self, _, inter: disnake.ApplicationCommandInteraction):
         res = [info[2] for info in db.get_data('votes', voting_id=self.mes_id)]
         stat = []
-
         for key in set(res):
             d = res.count(key) / len(res)
-            stat.append((key[:18],
-                         '🔳' * int(d * 10) + '⬜' * (10 - int(d * 10)),
-                         f'{round(100 * d, 2):.2f} % - {res.count(key)} голос'))
+            stat.append(
+                (key[:18],
+                 '🔳' * int(d * 10) + '⬜' * (10 - int(d * 10)),
+                 f'{round(100 * d, 2):.2f} % - {res.count(key)} голос')
+            )
 
         emb = disnake.Embed(title=f'Результаты голосования {self.question}', color=disnake.Color.gold())
 

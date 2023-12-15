@@ -24,9 +24,7 @@ class StatisticCommands(commands.Cog):
         description='Получить статистику сервера.',
     )
     async def server_info(self, inter: disnake.ApplicationCommandInteraction):
-        """
-        Слэш-команда, отправляет в ответ статистику сервера.
-        """
+        """Слэш-команда, отправляет в ответ статистику сервера."""
 
         guild = inter.guild
         info = db.get_data('users', '*, num_charact / messages', guild_id=guild.id)
@@ -54,9 +52,7 @@ class StatisticCommands(commands.Cog):
         description='Получить статистику пользователя.',
     )
     async def user_info(self, inter: disnake.ApplicationCommandInteraction, user: disnake.Member = None):
-        """
-        Слэш-команда, отправляет в ответ статистику пользователя.
-        """
+        """Слэш-команда, отправляет в ответ статистику пользователя."""
 
         if user is None:
             user = inter.author
@@ -103,9 +99,7 @@ class StatisticCommands(commands.Cog):
                 choices=list(PARAM_SORT.keys()), default='опыту', description='Сортировать по'
             )
     ):
-        """
-        Слэш-команда, отправляет в ответ топ пользователей.
-        """
+        """Слэш-команда, отправляет в ответ топ пользователей."""
 
         info = db.get_data('users', '*, num_charact / messages', [PARAM_SORT[sort_by][0] + ' DESC', 'user_name ASC'],
                            guild_id=inter.guild_id)

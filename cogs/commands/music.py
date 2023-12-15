@@ -1,5 +1,4 @@
 import asyncio
-from typing import Any, Dict
 
 import disnake
 import yt_dlp
@@ -8,13 +7,22 @@ from disnake.ext import commands
 from config import PATH_FFMPEG
 from utils.logger import logger
 
-yt_dlp.utils.bug_reports_message = lambda: ''
-
-ytdl_format_options = {
+ytdl_params_min = {
     'format': 'bestaudio/best',
     'outtmpl': '%(extractor)s-%(id)s-%(title)s.%(ext)s',
-    'restrictfilenames': True,
-    'nocheckcertificate': True,
+    'restrictfilenames': True,  # Принудительно использовать в названиях файлов только ASCII
+    'extract_flat': True,
+    'ignoreerrors': False,
+    'quiet': True,
+    'no_warnings': True,
+    'default_search': 'auto',
+    'source_address': '0.0.0.0'
+}
+
+ytdl_params_max = {
+    'format': 'bestaudio/best',
+    'outtmpl': '%(extractor)s-%(id)s-%(title)s.%(ext)s',
+    'restrictfilenames': True,  # Принудительно использовать в названиях файлов только ASCII
     'ignoreerrors': False,
     'quiet': True,
     'no_warnings': True,
@@ -27,10 +35,10 @@ ffmpeg_options = {
     'options': '-vn',
 }
 
-ytdl = yt_dlp.YoutubeDL(ytdl_format_options)
+ytdl_min = yt_dlp.YoutubeDL(ytdl_params_min)
+ytdl_max = yt_dlp.YoutubeDL(ytdl_params_max)
 
 guilds_queue = {}
-guilds_player = {}
 
 
 class YTDLSource(disnake.PCMVolumeTransformer):
@@ -39,46 +47,55 @@ class YTDLSource(disnake.PCMVolumeTransformer):
 
         self.title = title
 
-    @classmethod
-    async def from_url(cls, guild, url, loop: asyncio.AbstractEventLoop):
+    @staticmethod
+    async def download(loop, ytdl, url):
         try:
-            data = await loop.run_in_executor(None, lambda: ytdl.extract_info(url, download=False))
+            return await loop.run_in_executor(None, lambda: ytdl.extract_info(url, download=False))
         except yt_dlp.DownloadError as e:
             return e
 
-        if 'entries' in data:
-            for file in data['entries']:
-                guilds_queue[guild] = (
-                        guilds_queue.setdefault(guild, []) +
-                        [cls(file['title'], disnake.FFmpegPCMAudio(file['url'], executable=PATH_FFMPEG, **ffmpeg_options))]
-                )
+    @classmethod
+    def adder(cls, data, guild):
+        guilds_queue[guild] = (
+                guilds_queue.setdefault(guild, []) +
+                [cls(data['title'],
+                     disnake.FFmpegPCMAudio(data['url'], executable=PATH_FFMPEG, **ffmpeg_options))]
+        )
+
+    @classmethod
+    async def from_url(cls, guild, url, loop: asyncio.AbstractEventLoop):
+
+        data = await cls.download(loop, ytdl_min, url)
+
+        if type(data) is yt_dlp.DownloadError:
+            return data
+
+        elif '_type' in data:
+            if data['_type'] == 'url':
+                data = await cls.download(loop, ytdl_max, url)
+
+                if type(data) is yt_dlp.DownloadError:
+                    return data
+
+                elif 'entries' in data:
+                    data = data['entries'][0]
+                    cls.adder(data, guild)
+
+            elif data['_type'] == 'playlist' and 'entries' in data:
+                for file in data['entries']:
+                    data = await cls.download(loop, ytdl_max, file['url'])
+                    cls.adder(data, guild)
+
+        elif 'id' in data:
+            cls.adder(data, guild)
+
+        else:
+            return yt_dlp.DownloadError('ERROR: Неподдерживаемый сайт!')
 
 
 class Music(commands.Cog):
     def __init__(self, bot: commands.InteractionBot):
         self.bot = bot
-
-    @staticmethod
-    async def join(inter):
-        """Присоединение к голосовому каналу"""
-
-        try:
-            if inter.guild.voice_client is None:
-                await inter.user.voice.channel.connect()
-            else:
-                await inter.guild.voice_client.move_to(inter.user.voice.channel)
-
-            await inter.edit_original_response('Подключение выполнено.')
-
-            logger.info(f'[IN PROGRESS] is connected to {inter.user.voice.channel}')
-
-            return 1
-
-        except AttributeError:
-            await inter.edit_original_response('Вы не присоединены ни к одному каналу.')
-
-        except disnake.errors.Forbidden:
-            await inter.edit_original_response('Я не могу присоединиться к вашему каналу.')
 
     def next_music(self, guild, channel):
         """Переключение на следующий трек"""
@@ -89,25 +106,21 @@ class Music(commands.Cog):
 
         guilds_queue[guild.id] = queue[1:] if len(queue) > 1 else []
 
-        if not guilds_player.setdefault(guild.id, False):
-            self.bot.loop.create_task(self.play(guild, channel))
+        self.bot.loop.create_task(self.play(guild, channel))
 
     async def play(self, guild, channel):
         """Запуск очереди музыки"""
 
-        guilds_player[guild.id] = True
         queue = guilds_queue.setdefault(guild.id, [])
 
         vc: disnake.VoiceClient = guild.voice_client
 
-        if queue:
+        if queue and vc:
             vc.play(queue[0], after=lambda _: self.next_music(guild, channel))
             await channel.send(f'Сейчас играет: {queue[0].title}')
             logger.info(f'[IN PROGRESS] {guild.id} music_play')
-        else:
+        elif vc:
             await channel.send('Добавьте музыку в очередь командой /music_add2queue.')
-
-        guilds_player[guild.id] = False
 
     @commands.slash_command(
         name='music_add2queue',
@@ -115,9 +128,7 @@ class Music(commands.Cog):
     )
     async def music_add2queue(self, inter: disnake.ApplicationCommandInteraction,
                               name: str = commands.Param(description='Название трека или ссылка')):
-        """
-        Добавляет музыку по ссылке в очередь.
-        """
+        """Добавляет музыку по ссылке в очередь."""
 
         logger.info(f'[CALL] <@{inter.author.id}> /music_add2queue')
 
@@ -131,19 +142,68 @@ class Music(commands.Cog):
             await inter.edit_original_response(str(player))
             return
 
-        if vc and not vc.is_playing() and not guilds_player.setdefault(inter.guild_id, False):
-            self.bot.loop.create_task(self.play(inter.guild, inter.channel))
+        if vc and not vc.is_playing():
+            await self.bot.loop.create_task(self.play(inter.guild, inter.channel))
 
-        await inter.edit_original_response(f'Все элементы добавлены в очередь.')
+        await inter.edit_original_response('Все элементы добавлены в очередь.')
+
+    @commands.slash_command(
+        name='music_connect',
+        description='Присоединиться к голосовому каналу.'
+    )
+    async def music_connect(self, inter: disnake.ApplicationCommandInteraction, channel: disnake.VoiceChannel = None):
+        """Присоединяет бота к голосовому каналу."""
+
+        try:
+            if channel is None:
+                channel = inter.user.voice.channel
+
+            if inter.guild.voice_client is None:
+                await channel.connect()
+            else:
+                await inter.guild.voice_client.move_to(channel)
+
+            await inter.response.send_message('Подключение выполнено.', ephemeral=True)
+
+            logger.info(f'[IN PROGRESS] is connected to {channel}')
+
+            return 1
+
+        except AttributeError:
+            await inter.response.send_message('Вы не присоединены ни к одному каналу.', ephemeral=True)
+
+        except disnake.errors.Forbidden:
+            await inter.response.send_message('Я не могу присоединиться к вашему каналу.', ephemeral=True)
+
+    @commands.slash_command(
+        name='music_play',
+        description='Начать воспроизведение/снять с паузы.'
+    )
+    async def music_play(self, inter: disnake.ApplicationCommandInteraction):
+        """Запускает очередь."""
+
+        logger.info(f'[CALL] <@{inter.author.id}> /music_play')
+
+        vc: disnake.VoiceClient = inter.guild.voice_client
+
+        await inter.response.defer(ephemeral=True)
+
+        if not vc:
+            await inter.edit_original_response(
+                'Я не подключен ни к одному каналу, выполните подключение с помощью /music_connect.',
+            )
+        elif vc and vc.is_playing():
+            await inter.edit_original_response('Уже играет.')
+        else:
+            await inter.delete_original_response()
+            await self.bot.loop.create_task(self.play(inter.guild, inter.channel))
 
     @commands.slash_command(
         name='music_queue',
         description='Получить очередь музыки.'
     )
     async def music_queue(self, inter: disnake.ApplicationCommandInteraction):
-        """
-        Показать очередь музыки.
-        """
+        """Показать очередь музыки."""
 
         logger.info(f'[CALL] <@{inter.author.id}> /music_queue')
 
@@ -154,37 +214,11 @@ class Music(commands.Cog):
         )
 
     @commands.slash_command(
-        name='music_play',
-        description='Запустить музыку в очереди.'
-    )
-    async def music_play(self, inter: disnake.ApplicationCommandInteraction):
-        """
-        Запускает очередь.
-        """
-
-        logger.info(f'[CALL] <@{inter.author.id}> /music_play')
-
-        await inter.response.defer(ephemeral=True)
-
-        if await self.join(inter) is None:
-            return
-
-        vc: disnake.VoiceClient = inter.guild.voice_client
-
-        if vc and vc.is_playing():
-            await inter.send('Уже играет.', ephemeral=True)
-
-        elif not guilds_player.setdefault(inter.guild_id, False):
-            self.bot.loop.create_task(self.play(inter.guild, inter.channel))
-
-    @commands.slash_command(
         name='music_pause',
         description='Поставить музыку на паузу.'
     )
     async def music_pause(self, inter: disnake.ApplicationCommandInteraction):
-        """
-        Поставить музыку на паузу.
-        """
+        """Поставить музыку на паузу."""
 
         logger.info(f'[CALL] <@{inter.author.id}> /music_pause')
 
@@ -199,9 +233,7 @@ class Music(commands.Cog):
         description='Переключиться на следующую музыку.'
     )
     async def music_next(self, inter: disnake.ApplicationCommandInteraction):
-        """
-        Переключиться на следующий трек.
-        """
+        """Переключиться на следующий трек."""
 
         logger.info(f'[CALL] <@{inter.author.id}> /music_next')
 
@@ -217,9 +249,7 @@ class Music(commands.Cog):
         description='Очистить очередь музыки.'
     )
     async def music_clear(self, inter: disnake.ApplicationCommandInteraction):
-        """
-        Очистить очередь музыки.
-        """
+        """Очистить очередь музыки."""
 
         logger.info(f'[CALL] <@{inter.author.id}> /music_clear')
 
@@ -232,7 +262,6 @@ class Music(commands.Cog):
 
         try:
             del guilds_queue[inter.guild_id]
-            del guilds_player[inter.guild_id]
         except KeyError:
             pass
 
@@ -243,21 +272,17 @@ class Music(commands.Cog):
         description='Отключиться от голосового канала и очистить очередь.'
     )
     async def stop(self, inter: disnake.ApplicationCommandInteraction):
-        """
-        Остановить музыку и отключиться от голосового канала.
-        """
+        """Остановить музыку и отключиться от голосового канала."""
 
         logger.info(f'[CALL] <@{inter.author.id}> /music_stop')
 
         try:
-            await inter.guild.voice_client.disconnect()
-
+            await inter.guild.voice_client.disconnect(force=False)
         except (AttributeError, commands.errors.CommandInvokeError):
             pass
 
         try:
             del guilds_queue[inter.guild_id]
-            del guilds_player[inter.guild_id]
         except KeyError:
             pass
 
