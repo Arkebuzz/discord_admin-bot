@@ -7,22 +7,11 @@ from disnake.ext import commands
 from config import PATH_FFMPEG
 from utils.logger import logger
 
-ytdl_params_min = {
+ytdl_params = {
     'format': 'bestaudio/best',
     'outtmpl': '%(extractor)s-%(id)s-%(title)s.%(ext)s',
     'restrictfilenames': True,  # Принудительно использовать в названиях файлов только ASCII
-    'extract_flat': True,
-    'ignoreerrors': False,
-    'quiet': True,
-    'no_warnings': True,
-    'default_search': 'auto',
-    'source_address': '0.0.0.0'
-}
-
-ytdl_params_max = {
-    'format': 'bestaudio/best',
-    'outtmpl': '%(extractor)s-%(id)s-%(title)s.%(ext)s',
-    'restrictfilenames': True,  # Принудительно использовать в названиях файлов только ASCII
+    'extract_flat': 'in_playlist',
     'ignoreerrors': False,
     'quiet': True,
     'no_warnings': True,
@@ -35,8 +24,7 @@ ffmpeg_options = {
     'options': '-vn',
 }
 
-ytdl_min = yt_dlp.YoutubeDL(ytdl_params_min)
-ytdl_max = yt_dlp.YoutubeDL(ytdl_params_max)
+ytdl = yt_dlp.YoutubeDL(ytdl_params)
 
 guilds_queue = {}
 
@@ -48,49 +36,41 @@ class YTDLSource(disnake.PCMVolumeTransformer):
         self.title = title
 
     @staticmethod
-    async def download(loop, ytdl, url):
+    async def download(loop, url):
         try:
             return await loop.run_in_executor(None, lambda: ytdl.extract_info(url, download=False))
         except yt_dlp.DownloadError as e:
             return e
 
     @classmethod
-    def adder(cls, data, guild):
-        guilds_queue[guild] = (
-                guilds_queue.setdefault(guild, []) +
-                [cls(data['title'],
-                     disnake.FFmpegPCMAudio(data['url'], executable=PATH_FFMPEG, **ffmpeg_options))]
+    def adder(cls, file, guild_id):
+        if guild_id not in guilds_queue:
+            return KeyError
+
+        guilds_queue[guild_id] = (
+                guilds_queue[guild_id] +
+                [cls(file['title'],
+                     disnake.FFmpegPCMAudio(file['url'], executable=PATH_FFMPEG, **ffmpeg_options))]
         )
 
     @classmethod
-    async def from_url(cls, guild, url, loop: asyncio.AbstractEventLoop):
-
-        data = await cls.download(loop, ytdl_min, url)
+    async def from_url(cls, guild_id, url, loop: asyncio.AbstractEventLoop):
+        data = await cls.download(loop, url)
 
         if type(data) is yt_dlp.DownloadError:
             return data
 
-        elif '_type' in data:
-            if data['_type'] == 'url':
-                data = await cls.download(loop, ytdl_max, url)
+        if guild_id not in guilds_queue:
+            guilds_queue[guild_id] = []
 
-                if type(data) is yt_dlp.DownloadError:
-                    return data
+        if 'entries' in data:
+            for file in data['entries']:
+                file = await cls.download(loop, file['url'])
 
-                elif 'entries' in data:
-                    data = data['entries'][0]
-                    cls.adder(data, guild)
-
-            elif data['_type'] == 'playlist' and 'entries' in data:
-                for file in data['entries']:
-                    data = await cls.download(loop, ytdl_max, file['url'])
-                    cls.adder(data, guild)
-
-        elif 'id' in data:
-            cls.adder(data, guild)
-
+                if cls.adder(file, guild_id) is not None:
+                    return
         else:
-            return yt_dlp.DownloadError('ERROR: Неподдерживаемый сайт!')
+            cls.adder(data, guild_id)
 
 
 class Music(commands.Cog):

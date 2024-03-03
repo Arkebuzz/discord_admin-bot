@@ -37,7 +37,10 @@ async def search_steam_games():
 
         game_info = BeautifulSoup(game_info, 'html.parser')
 
-        date = game_info.find('p', {'class': 'game_purchase_discount_quantity'}).text.split('	')[0]
+        try:
+            date = game_info.find('p', {'class': 'game_purchase_discount_quantity'}).text.split('	')[0]
+        except AttributeError:
+            continue
 
         if game_info.find('div', {'class': 'game_area_bubble game_area_dlc_bubble'}) is not None:
             dlc = 1
@@ -107,7 +110,6 @@ async def search_epic_games():
     res = []
 
     for game in contents:
-
         if game['title'] == 'Mystery Game' or game['price']['totalPrice']['discountPrice'] != 0:
             continue
 
@@ -123,7 +125,7 @@ async def search_epic_games():
         except (KeyError, IndexError):
             url = 'https://store.epicgames.com/ru/p/' + game['productSlug'],  # Ссылка
 
-        dlc = 0 if game['offerType'] == 'BASE_GAME' else 1
+        dlc = 0  # if game['offerType'] == 'BASE_GAME' else 1
 
         img = game['keyImages'][0]['url']
 
