@@ -39,7 +39,7 @@ async def add_guild2db(bot, guild_id):
             async for mes in ch.history(limit=10000):
                 if not mes.author.bot and mes.author.name != 'Deleted User':
                     name = mes.author.name.encode('windows-1251', 'replace').decode('windows-1251')
-                    db.update_user(mes.guild.id, mes.author.id, name, len(mes.content), len(mes.attachments))
+                    db.update_user(mes.guild.id, mes.author.id, name, len(mes.content), len(mes.attachments), comm=False)
 
         except disnake.errors.Forbidden:
             continue

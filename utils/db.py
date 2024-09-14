@@ -79,6 +79,9 @@ class DB:
 
         self.conn.commit()
 
+    def commit(self):
+        self.conn.commit()
+
     def get_data(self, table, columns='*', orders=None, **filters) -> list:
         """
         Получение строк из БД по введенным параметрам.
@@ -189,7 +192,7 @@ class DB:
         except sqlite3.Error:
             return -1
 
-    def update_user(self, guild_id, user_id, user_name, len_message=0, num_attach=0, voting=(0, 0)):
+    def update_user(self, guild_id, user_id, user_name, len_message=0, num_attach=0, voting=(0, 0), comm=True):
         """
         Обновляет статистику пользователя на сервере.
 
@@ -199,6 +202,7 @@ class DB:
         :param len_message: Длина сообщения.
         :param num_attach: Количество вложений.
         :param voting: (int(bool), int(bool)) [0] - новое голосование, [1] - новый голос.
+        :param comm: Коммитить изменение?
         :return: None
         """
 
@@ -216,8 +220,8 @@ class DB:
                          'SET experience = experience + ?, messages = messages + 1, num_charact = num_charact + ?,'
                          'num_voting = num_voting + ?, num_votes = num_votes + ?',
                          (guild_id, user_id, user_name, exp, len_message, *voting, exp, len_message, *voting))
-
-        self.conn.commit()
+        if comm:
+            self.conn.commit()
 
     def add_voting(self, mes_id, channel_id, user_info, question, time, min_choices, max_choices, answers):
         """

@@ -62,31 +62,13 @@ class VotingCommands(commands.Cog):
 
         await inter.response.defer()
 
-        answers = []
-
-        if answer0:
-            answers.append(answer0)
-        if answer1:
-            answers.append(answer1)
-        if answer2:
-            answers.append(answer2)
-        if answer3:
-            answers.append(answer3)
-        if answer4:
-            answers.append(answer4)
-        if answer5:
-            answers.append(answer5)
-        if answer6:
-            answers.append(answer6)
-        if answer7:
-            answers.append(answer7)
-        if answer8:
-            answers.append(answer8)
-        if answer9:
-            answers.append(answer9)
+        answers = {
+            a for a in (answer0, answer1, answer2, answer3, answer4, answer5, answer6, answer7, answer8, answer9) if
+            a is not None
+        }
 
         if not answers:
-            answers = ['Да', 'Нет']
+            answers = {'Да', 'Нет'}
 
         emb = disnake.Embed(title=question, color=disnake.Color.gold())
         emb.add_field('Завершится', f'<t:{int(timer)}:R>')
