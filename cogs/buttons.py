@@ -3,8 +3,6 @@ import disnake
 from utils.db import DB
 from utils.logger import logger
 
-db = DB()
-
 
 class Voting(disnake.ui.View):
     """Класс добавляет к сообщению 2 кнопки: продолжить и отменить."""
@@ -15,6 +13,8 @@ class Voting(disnake.ui.View):
         self.choices = choices
         self.min_values = min_values
         self.max_values = max_values
+
+        self.db = DB()
 
         super().__init__(timeout=time)
 
@@ -31,12 +31,16 @@ class Voting(disnake.ui.View):
                 super().__init__(timeout=60)
                 self.value = None
 
-            @disnake.ui.string_select(placeholder=self.question,
-                                      min_values=self.min_values,
-                                      max_values=self.max_values,
-                                      options=[disnake.SelectOption(label=lab) for lab in self.choices])
-            async def select(self, string_select: disnake.ui.StringSelect,
-                             select_inter: disnake.ApplicationCommandInteraction):
+            @disnake.ui.string_select(
+                placeholder=self.question,
+                min_values=self.min_values,
+                max_values=self.max_values,
+                options=[disnake.SelectOption(label=lab) for lab in self.choices]
+            )
+            async def select(
+                    self, string_select: disnake.ui.StringSelect,
+                    select_inter: disnake.ApplicationCommandInteraction
+            ):
                 if string_select.values:
                     self.value = string_select.values
 
@@ -48,7 +52,7 @@ class Voting(disnake.ui.View):
         await view.wait()
 
         if view.value is not None:
-            db.add_vote(self.mes_id, (inter.guild_id, inter.author.id, inter.author.id), view.value)
+            self.db.add_vote(self.mes_id, (inter.guild_id, inter.author.id, inter.author.id), view.value)
 
             await inter.edit_original_response('Ваш голос принят.', view=None)
             logger.info(f'[NEW VOTE] <@{inter.author.id}> question {self.question}')
@@ -57,14 +61,16 @@ class Voting(disnake.ui.View):
 
     @disnake.ui.button(label='Результаты', style=disnake.ButtonStyle.green)
     async def results(self, _, inter: disnake.ApplicationCommandInteraction):
-        res = [info[2] for info in db.get_data('votes', voting_id=self.mes_id)]
+        res = [info[2] for info in self.db.get_data('votes', voting_id=self.mes_id)]
         stat = []
         for key in set(res):
             d = res.count(key) / len(res)
             stat.append(
-                (key[:18],
-                 '🔳' * int(d * 10) + '⬜' * (10 - int(d * 10)),
-                 f'{round(100 * d, 2):.2f} % - {res.count(key)} голос')
+                [
+                    key[:18],
+                    '🔳' * int(d * 10) + '⬜' * (10 - int(d * 10)),
+                    f'{round(100 * d, 2):.2f} % - {res.count(key)} голос'
+                ]
             )
 
         emb = disnake.Embed(title=f'Результаты голосования {self.question}', color=disnake.Color.gold())

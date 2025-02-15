@@ -3,13 +3,14 @@ from disnake.ext import commands
 
 from cogs.help_data import help_data
 from config import __version__, __version_info__
-from main import db
+from utils.db import DB
 from utils.logger import logger
 
 
 class SystemCommands(commands.Cog):
     def __init__(self, bot: commands.InteractionBot):
         self.bot = bot
+        self.db = DB()
 
     @commands.slash_command(
         name='info',
@@ -23,11 +24,12 @@ class SystemCommands(commands.Cog):
         emb.add_field(name='Версия:', value=__version__)
         emb.add_field(name='Серверов:', value=len(self.bot.guilds))
         emb.add_field(name='Описание:', value='Бот создан для упрощения работы админов.', inline=False)
-        emb.add_field(name='Что нового:',
-                      value=__version_info__, inline=False)
-        emb.set_footer(text='@Arkebuzz#7717\n'
-                            'https://github.com/Arkebuzz/discord_admin-bot',
-                       icon_url='https://avatars.githubusercontent.com/u/115876609?v=4')
+        emb.add_field(name='Что нового:', value=__version_info__, inline=False)
+        emb.set_footer(
+            text='@Arkebuzz#7717\n'
+                 'https://github.com/Arkebuzz/discord_admin-bot',
+            icon_url='https://avatars.githubusercontent.com/u/115876609?v=4'
+        )
 
         await inter.response.send_message(embed=emb)
 
@@ -67,59 +69,57 @@ class SystemCommands(commands.Cog):
     async def check_permissions(self, inter: disnake.ApplicationCommandInteraction):
         """Слэш-команда, проверяет верно ли настроены разрешения бота."""
 
-        info = db.get_data('guilds', id=inter.guild_id)
+        info = self.db.get_data('guilds', id=inter.guild_id)
         emb = disnake.Embed(title='Проверка разрешений бота', color=disnake.Color.gold())
 
         if info and info[0][2]:
             emb.add_field(
-                name='Отправка сообщений в канале лога: ' +
-                     ('✅' if self.bot.get_channel(info[0][2]).permissions_for(inter.guild.me).send_messages else '⛔'),
-                value='',
+                'Отправка сообщений в канале лога: ' +
+                ('✅' if self.bot.get_channel(info[0][2]).permissions_for(inter.guild.me).send_messages else '⛔'),
+                '',
                 inline=False
             )
         else:
-            emb.add_field(name='Отправка сообщений в канале лога: ⚠️',
-                          value='',
-                          inline=False)
+            emb.add_field('Отправка сообщений в канале лога: ⚠️', '', inline=False)
 
         if info and info[0][6]:
             emb.add_field(
-                name='Отправка сообщений в канале игр: ' +
-                     ('✅' if self.bot.get_channel(info[0][6]).permissions_for(inter.guild.me).send_messages else '⛔'),
-                value='',
+                'Отправка сообщений в канале игр: ' +
+                ('✅' if self.bot.get_channel(info[0][6]).permissions_for(inter.guild.me).send_messages else '⛔'),
+                '',
                 inline=False
             )
         else:
-            emb.add_field(name='Отправка сообщений в канале игр: ⚠️',
-                          value='',
-                          inline=False)
+            emb.add_field('Отправка сообщений в канале игр: ⚠️', '', inline=False)
 
-        emb.add_field(name='Добавление реакций в данном канале: ' +
-                           ('✅' if inter.channel.permissions_for(inter.guild.me).add_reactions else '⛔'),
-                      value='',
-                      inline=False)
+        emb.add_field(
+            'Добавление реакций в данном канале: ' +
+            ('✅' if inter.channel.permissions_for(inter.guild.me).add_reactions else '⛔'),
+            '',
+            inline=False
+        )
 
         if inter.channel.permissions_for(inter.guild.me).manage_roles:
             if not info or not info[0][3]:
-                emb.add_field(name='Роль по умолчанию: ⚠️', value='', inline=False)
+                emb.add_field('Роль по умолчанию: ⚠️', '', inline=False)
             else:
                 emb.add_field(
-                    name='Роль по умолчанию: ' +
-                         ('✅' if self.bot.get_guild(inter.guild_id).get_role(info[0][3]).is_assignable() else '⛔'),
-                    value='',
+                    'Роль по умолчанию: ' +
+                    ('✅' if self.bot.get_guild(inter.guild_id).get_role(info[0][3]).is_assignable() else '⛔'),
+                    '',
                     inline=False
                 )
 
             emb.add_field('Право на назначение ролей в автораздаче:', '', inline=False)
 
-            for role in db.get_data('reaction4role', 'role, reaction', guild_id=inter.guild_id):
-                emb.add_field('',
-                              f'<@&{role[0]}> ' +
-                              ('✅' if self.bot.get_guild(inter.guild_id).get_role(role[0]).is_assignable() else '⛔'))
+            for role in self.db.get_data('reaction4role', 'role, reaction', guild_id=inter.guild_id):
+                emb.add_field(
+                    '',
+                    f'<@&{role[0]}> ' +
+                    ('✅' if self.bot.get_guild(inter.guild_id).get_role(role[0]).is_assignable() else '⛔')
+                )
         else:
-            emb.add_field('Право на управление ролями: ⛔',
-                          '',
-                          inline=False)
+            emb.add_field('Право на управление ролями: ⛔', '', inline=False)
 
         emb.set_footer(text='✅ - работает; ️️⚠️ - не настроено; ⛔ - нет прав')
 
@@ -136,7 +136,7 @@ class SystemCommands(commands.Cog):
         """Слэш-команда, производит настройку канала для бота на сервере."""
 
         if channel.permissions_for(inter.guild.me).send_messages:
-            db.update_guild_settings(inter.guild_id, log_id=channel.id)
+            self.db.update_guild_settings(inter.guild_id, log_id=channel.id)
 
             await inter.response.send_message('Выполнена настройка канала-лога для бота, '
                                               f'теперь канал лога - {channel}', ephemeral=True)
@@ -156,7 +156,7 @@ class SystemCommands(commands.Cog):
     async def disable_log_channel(self, inter: disnake.ApplicationCommandInteraction):
         """Слэш-команда, производит настройку канала для бота на сервере."""
 
-        db.update_guild_settings(inter.guild_id, log_id=None)
+        self.db.update_guild_settings(inter.guild_id, log_id=None)
 
         await inter.response.send_message('Канал-лог отключен.', ephemeral=True)
 
@@ -171,15 +171,19 @@ class SystemCommands(commands.Cog):
         """Слэш-команда, производит настройку канала для бота на сервере."""
 
         if channel.permissions_for(inter.guild.me).send_messages:
-            db.update_guild_settings(inter.guild_id, game_id=channel.id)
+            self.db.update_guild_settings(inter.guild_id, game_id=channel.id)
 
-            await inter.response.send_message('Выполнена настройка канала оповещений для бота, '
-                                              f'теперь канал с игровыми оповещениями - {channel}', ephemeral=True)
+            await inter.response.send_message(
+                'Выполнена настройка канала оповещений для бота, '
+                f'теперь канал с игровыми оповещениями - {channel}', ephemeral=True
+            )
 
             logger.info(f'[CALL] <@{inter.author.id}> /set_games_channel channel: {channel}')
         else:
-            await inter.response.send_message('Невозможно выполнить настройку канала оповещений для бота, '
-                                              'бот не может писать в переданном канале.', ephemeral=True)
+            await inter.response.send_message(
+                'Невозможно выполнить настройку канала оповещений для бота, '
+                'бот не может писать в переданном канале.', ephemeral=True
+            )
 
             logger.info(f'[CALL] <@{inter.author.id}> /set_log_channel forbidden sent message')
 
@@ -191,7 +195,7 @@ class SystemCommands(commands.Cog):
     async def disable_games_channel(self, inter: disnake.ApplicationCommandInteraction):
         """Слэш-команда, производит настройку канала для бота на сервере."""
 
-        db.update_guild_settings(inter.guild_id, game_id=None)
+        self.db.update_guild_settings(inter.guild_id, game_id=None)
 
         await inter.response.send_message('Канал игр отключен.', ephemeral=True)
 

@@ -4,7 +4,7 @@ import disnake
 from disnake.ext import commands
 
 from cogs.functions import send_warning_message, add_guild2db, refresh, UpdateDB, key_sort
-from main import db
+from utils.db import DB
 from utils.logger import logger
 
 
@@ -13,6 +13,7 @@ class MainEvents(commands.Cog):
 
     def __init__(self, bot: commands.InteractionBot):
         self.bot = bot
+        self.db = DB()
 
     @commands.Cog.listener()
     async def on_ready(self):
@@ -36,29 +37,27 @@ class MainEvents(commands.Cog):
 
         for channel in guild.text_channels:
             try:
-                await channel.send('Здравствуйте, я очень рад, что вы добавили меня на сервер.\n'
-                                   'Сейчас я проведу анализ текущих сообщений на сервере, это займёт несколько минут.\n'
-                                   'Вы можете пользоваться ботом в течении этого времени, '
-                                   'однако статистика пользователей и сервера будет выводиться некорректно.')
+                await channel.send(
+                    'Здравствуйте, я очень рад, что вы добавили меня на сервер.\n'
+                    'Сейчас я проведу анализ текущих сообщений на сервере, это займёт несколько минут.\n'
+                    'Вы можете пользоваться ботом в течении этого времени, '
+                    'однако статистика пользователей и сервера будет выводиться некорректно.'
+                )
 
-                emb = disnake.Embed(
-                    description='Я умею раздавать роли, вести статистику пользователей сервера, устраивать голосования,'
-                                ' сообщать о новых раздачах игр и транслировать музыку.\n\n'
-                                'Список команд (некоторые команды доступны только администраторам сервера):',
-                    color=disnake.Color.blue()
+                text = (
+                    'Я умею раздавать роли, вести статистику пользователей сервера, устраивать голосования,'
+                    ' сообщать о новых раздачах игр и транслировать музыку.\n\n'
+                    '**Список команд (некоторые команды доступны только администраторам сервера):**\n'
                 )
 
                 for com in sorted(list(self.bot.slash_commands), key=key_sort):
-                    emb.add_field('/' + com.name, com.description, inline=False)
+                    text += '/' + com.name + '\t' + com.description + '\n'
 
-                emb.add_field('Для просмотра помощи по использованию голосований смотри /voting_help.', '',
-                              inline=False)
-
-                await channel.send(embed=emb)
+                await channel.send(text)
 
             except disnake.errors.Forbidden:
                 continue
-            
+
             break
 
         await add_guild2db(self.bot, guild.id)
@@ -80,7 +79,7 @@ class MainEvents(commands.Cog):
         Выполняется, когда бот покидает сервер.
         """
 
-        db.delete_date('guilds', id=guild.id)
+        self.db.delete_date('guilds', id=guild.id)
 
         logger.info(f'[DEL GUILD] <{guild.id}>')
 
@@ -90,6 +89,7 @@ class ReactionEvents(commands.Cog):
 
     def __init__(self, bot: commands.InteractionBot):
         self.bot = bot
+        self.db = DB()
 
     @commands.Cog.listener()
     async def on_raw_reaction_add(self, payload: disnake.RawReactionActionEvent):
@@ -97,14 +97,14 @@ class ReactionEvents(commands.Cog):
         Выполняется, когда поставлена новая реакция.
         """
 
-        mes = db.get_data('guilds', id=payload.guild_id)[0][4:]
+        mes = self.db.get_data('guilds', id=payload.guild_id)[0][4:]
 
         if payload.user_id == self.bot.user.id or payload.channel_id != mes[0] or payload.message_id != mes[1]:
             return
 
         emoji = str(payload.emoji)
 
-        roles = db.get_data('reaction4role', 'role, reaction', guild_id=payload.guild_id)
+        roles = self.db.get_data('reaction4role', 'role, reaction', guild_id=payload.guild_id)
         active_emoji = [react[1] for react in roles]
 
         if emoji in active_emoji:
@@ -115,9 +115,11 @@ class ReactionEvents(commands.Cog):
             except disnake.errors.Forbidden:
                 logger.info(f'[NEW REACT] <{payload.user_id}> forbidden role')
 
-                await send_warning_message(self.bot.get_guild(payload.guild_id),
-                                           f'Бот не может назначить роль по следующей реакции - {emoji} '
-                                           f'на <@{payload.user_id}>!')
+                await send_warning_message(
+                    self.bot.get_guild(payload.guild_id),
+                    f'Бот не может назначить роль по следующей реакции - {emoji} '
+                    f'на <@{payload.user_id}>!'
+                )
 
             logger.info(f'[NEW REACT] <{payload.user_id}>')
 
@@ -127,14 +129,14 @@ class ReactionEvents(commands.Cog):
         Выполняется, когда реакция удалена.
         """
 
-        mes = db.get_data('guilds', id=payload.guild_id)[0][4:]
+        mes = self.db.get_data('guilds', id=payload.guild_id)[0][4:]
 
         if payload.user_id == self.bot.user.id or payload.channel_id != mes[0] or payload.message_id != mes[1]:
             return
 
         emoji = str(payload.emoji)
 
-        roles = db.get_data('reaction4role', 'role, reaction', guild_id=payload.guild_id)
+        roles = self.db.get_data('reaction4role', 'role, reaction', guild_id=payload.guild_id)
         active_emoji = [react[1] for react in roles]
 
         if emoji in active_emoji:
@@ -146,9 +148,11 @@ class ReactionEvents(commands.Cog):
             except disnake.errors.Forbidden:
                 logger.info(f'[DEL REACT] <{payload.user_id}> forbidden role')
 
-                await send_warning_message(self.bot.get_guild(payload.guild_id),
-                                           f'Бот не может убрать роль по следующей реакции - {emoji} '
-                                           f'с <@{payload.user_id}>!')
+                await send_warning_message(
+                    self.bot.get_guild(payload.guild_id),
+                    f'Бот не может убрать роль по следующей реакции - {emoji} '
+                    f'с <@{payload.user_id}>!'
+                )
 
             logger.info(f'[DEL REACT] <{payload.user_id}>')
 
@@ -158,10 +162,11 @@ class MemberEvents(commands.Cog):
 
     def __init__(self, bot: commands.InteractionBot):
         self.bot = bot
+        self.db = DB()
 
     @commands.Cog.listener()
     async def on_member_join(self, member: disnake.Member):
-        guild = db.get_data('guilds', id=member.guild.id)
+        guild = self.db.get_data('guilds', id=member.guild.id)
 
         if guild:
             guild = guild[0]
@@ -171,7 +176,7 @@ class MemberEvents(commands.Cog):
                     await self.bot.get_channel(guild[2]).send(f'<@{member.id}> присоединился к серверу.')
                 except disnake.errors.Forbidden:
                     logger.info(f'[NEW USER] forbidden log-channel {guild[2]} from {guild[0]}')
-                    db.update_guild_settings(guild[0], log_id=None)
+                    self.db.update_guild_settings(guild[0], log_id=None)
 
                     await send_warning_message(
                         member.guild,
@@ -183,7 +188,7 @@ class MemberEvents(commands.Cog):
                     await member.add_roles(member.guild.get_role(guild[3]))
                 except disnake.errors.Forbidden:
                     logger.info(f'[NEW USER] forbidden role')
-                    db.update_guild_settings(guild[0], role_id=None)
+                    self.db.update_guild_settings(guild[0], role_id=None)
 
                     await send_warning_message(
                         member.guild,
@@ -195,14 +200,14 @@ class MemberEvents(commands.Cog):
 
     @commands.Cog.listener()
     async def on_raw_member_remove(self, payload: disnake.RawGuildMemberRemoveEvent):
-        guild = db.get_data('guilds', id=payload.guild_id)
+        guild = self.db.get_data('guilds', id=payload.guild_id)
 
         if guild and guild[0][2]:
             try:
                 await self.bot.get_channel(guild[0][2]).send(f'<@{payload.user.id}> покинул сервер.')
             except disnake.errors.Forbidden:
                 logger.info(f'[DEL USER] forbidden log-channel {guild[0][2]} from {guild[0][0]}')
-                db.update_guild_settings(guild[0][0], log_id=None)
+                self.db.update_guild_settings(guild[0][0], log_id=None)
 
                 await send_warning_message(
                     self.bot.get_guild(payload.guild_id),
@@ -217,16 +222,17 @@ class MessageEvents(commands.Cog):
 
     def __init__(self, bot: commands.InteractionBot):
         self.bot = bot
+        self.db = DB()
 
     @commands.Cog.listener()
     async def on_message(self, mes: disnake.Message):
-        guild = db.get_data('guilds', id=mes.guild.id)
+        guild = self.db.get_data('guilds', id=mes.guild.id)
 
         if not guild or not guild[0][1] or mes.author.bot or mes.author.name == 'Deleted User':
             return
 
         name = mes.author.name.encode('windows-1251', 'replace').decode('windows-1251')
-        db.update_user(mes.guild.id, mes.author.id, name, len(mes.content), len(mes.attachments))
+        self.db.update_user(mes.guild.id, mes.author.id, name, len(mes.content), len(mes.attachments))
 
 
 def setup(bot: commands.InteractionBot):

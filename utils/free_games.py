@@ -64,19 +64,12 @@ async def search_steam_games():
         res += [[
             game.find('span', {'class': 'title'}).text + ' (' +  # Название
             game.find('div', {'class': 'col search_released responsive_secondrow'}).text.strip() + ')',  # Дата выхода
-
             dlc,  # Дополнение (0,1)?
-
             game['href'],  # Ссылка
-
             description,  # Описание
-
             rating,  # Рейтинг
-
             date,  # До какого момента можно забрать
-
             game.find('img').get('srcset').split()[-2],  # Картинка
-
             0  # Тип магазина
         ]]
 
@@ -126,24 +119,16 @@ async def search_epic_games():
             url = 'https://store.epicgames.com/ru/p/' + game['productSlug'],  # Ссылка
 
         dlc = 0  # if game['offerType'] == 'BASE_GAME' else 1
-
         img = game['keyImages'][0]['url']
 
         res += [[
             game['title'],  # Название
-
             dlc,  # Дополнение?
-
             url[0],  # Ссылка
-
             game['description'],  # Описание
-
             None,  # Рейтинга в эпике нет
-
             date,  # Дата
-
             img,  # Картинка
-
             1  # Тип магазина
         ]]
 

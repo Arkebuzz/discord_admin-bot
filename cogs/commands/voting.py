@@ -4,13 +4,14 @@ import disnake
 from disnake.ext import commands
 
 from cogs.buttons import Voting
-from main import db
+from utils.db import DB
 from utils.logger import logger
 
 
 class VotingCommands(commands.Cog):
     def __init__(self, bot: commands.InteractionBot):
         self.bot = bot
+        self.db = DB()
 
     @commands.slash_command(
         name='voting_new',
@@ -55,8 +56,10 @@ class VotingCommands(commands.Cog):
             await inter.response.send_message(embed=emb, ephemeral=True)
             return
         except NameError:
-            emb = disnake.Embed(title='Неправильно указаны минимальное и максимальное числа вариантов, '
-                                      'которые может выбрать голосующий!', color=disnake.Color.red())
+            emb = disnake.Embed(
+                title='Неправильно указаны минимальное и максимальное числа вариантов, которые может выбрать голосующий!',
+                color=disnake.Color.red()
+            )
             await inter.response.send_message(embed=emb, ephemeral=True)
             return
 
@@ -78,7 +81,7 @@ class VotingCommands(commands.Cog):
 
         msg = await inter.original_message()
 
-        db.add_voting(
+        self.db.add_voting(
             msg.id, inter.channel_id, (inter.guild_id, inter.author.id, inter.author.name),
             question, timer, min_choices, max_choices, answers
         )

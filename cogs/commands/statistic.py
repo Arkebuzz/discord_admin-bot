@@ -2,7 +2,7 @@ import disnake
 from disnake.ext import commands
 from tabulate import tabulate
 
-from main import db
+from utils.db import DB
 from utils.logger import logger
 
 PARAM_SORT = {
@@ -18,6 +18,7 @@ PARAM_SORT = {
 class StatisticCommands(commands.Cog):
     def __init__(self, bot: commands.InteractionBot):
         self.bot = bot
+        self.db = DB()
 
     @commands.slash_command(
         name='server_info',
@@ -27,7 +28,7 @@ class StatisticCommands(commands.Cog):
         """Слэш-команда, отправляет в ответ статистику сервера."""
 
         guild = inter.guild
-        info = db.get_data('users', '*, num_charact / messages', guild_id=guild.id)
+        info = self.db.get_data('users', '*, num_charact / messages', guild_id=guild.id)
         exp = sum(us[3] for us in info) // 2
         mes = sum(us[4] for us in info)
 
@@ -57,7 +58,9 @@ class StatisticCommands(commands.Cog):
         if user is None:
             user = inter.author
 
-        db_info = db.get_data('users', '*, num_charact / messages', guild_id=inter.guild_id, user_id=user.id)
+        db_info = self.db.get_data(
+            'users', '*, num_charact / messages', guild_id=inter.guild_id, user_id=user.id
+        )
 
         if user.id == self.bot.user.id:
             info = ['∞', '∞', '∞']
@@ -101,8 +104,11 @@ class StatisticCommands(commands.Cog):
     ):
         """Слэш-команда, отправляет в ответ топ пользователей."""
 
-        info = db.get_data('users', '*, num_charact / messages', [PARAM_SORT[sort_by][0] + ' DESC', 'user_name ASC'],
-                           guild_id=inter.guild_id)
+        info = self.db.get_data(
+            'users', '*, num_charact / messages',
+            [PARAM_SORT[sort_by][0] + ' DESC', 'user_name ASC'],
+            guild_id=inter.guild_id
+        )
 
         number = [i[1] for i in info].index(inter.author.id)
 
@@ -111,9 +117,12 @@ class StatisticCommands(commands.Cog):
         emb.add_field(
             '',
             '```' +
-            tabulate([(user[2], user[PARAM_SORT[sort_by][1]]) for user in info[:10]],
-                     ['Участник', PARAM_SORT[sort_by][2]], 'fancy_grid', maxcolwidths=[15, 5]) +
-            '```'
+            tabulate(
+                [(user[2], user[PARAM_SORT[sort_by][1]]) for user in info[:10]],
+                ['Участник', PARAM_SORT[sort_by][2]],
+                'fancy_grid',
+                maxcolwidths=[15, 5]
+            ) + '```'
         )
 
         await inter.response.send_message(embed=emb)

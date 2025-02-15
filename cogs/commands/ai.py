@@ -4,7 +4,7 @@ from duckduckgo_search import AsyncDDGS
 
 from utils.logger import logger
 
-models = ['gpt-4o-mini', 'claude-3-haiku', 'llama-3.1-70b', 'mixtral-8x7b']
+models = ['gpt-4o-mini', 'claude-3-haiku', 'mixtral-8x7b']
 
 
 class AICommands(commands.Cog):

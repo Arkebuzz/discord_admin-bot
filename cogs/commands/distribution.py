@@ -2,13 +2,14 @@ import disnake
 import emoji
 from disnake.ext import commands
 
-from main import db
+from utils.db import DB
 from utils.logger import logger
 
 
 class DistributionCommands(commands.Cog):
     def __init__(self, bot: commands.InteractionBot):
         self.bot = bot
+        self.db = DB()
 
     @commands.slash_command(
         name='set_default_role',
@@ -19,19 +20,20 @@ class DistributionCommands(commands.Cog):
         """Обновляет связку роль - реакция на сервере."""
 
         if role.is_default():
-            db.update_guild_settings(inter.guild_id, role_id='NULL')
+            self.db.update_guild_settings(inter.guild_id, role_id='NULL')
             await inter.response.send_message('Роль по умолчанию сброшена.', ephemeral=True)
 
             logger.info(f'[CALL] <@{inter.author.id}> /set_default_role role`s del')
 
         elif not role.is_assignable():
-            await inter.response.send_message('Невозможно настроить роль по умолчанию, данная роль превосходит роль '
-                                              'бота.', ephemeral=True)
+            await inter.response.send_message(
+                'Невозможно настроить роль по умолчанию, данная роль превосходит роль бота.', ephemeral=True
+            )
 
             logger.info(f'[CALL] <@{inter.author.id}> /set_default_role incorrect role')
 
         else:
-            db.update_guild_settings(inter.guild_id, role_id=role.id)
+            self.db.update_guild_settings(inter.guild_id, role_id=role.id)
             await inter.response.send_message('Роль по умолчанию настроена.', ephemeral=True)
 
             logger.info(f'[CALL] <@{inter.author.id}> /set_default_role role`s append')
@@ -50,11 +52,13 @@ class DistributionCommands(commands.Cog):
             logger.info(f'[CALL] <@{inter.author.id}> /distribution_new_message forbidden add_reactions')
             return
 
-        emb = disnake.Embed(title='Выбери роли',
-                            description='Поставь реакцию для получения соответствующей роли.',
-                            colour=disnake.Colour.gold())
+        emb = disnake.Embed(
+            title='Выбери роли',
+            description='Поставь реакцию для получения соответствующей роли.',
+            colour=disnake.Colour.gold()
+        )
 
-        roles = db.get_data('reaction4role', 'role, reaction', guild_id=inter.guild_id)[:10]
+        roles = self.db.get_data('reaction4role', 'role, reaction', guild_id=inter.guild_id)[:10]
         for role, reaction in roles:
             emb.add_field(name='', value=f'{reaction} - <@&{role}>', inline=False)
 
@@ -64,7 +68,7 @@ class DistributionCommands(commands.Cog):
         for _, reaction in roles:
             await mes.add_reaction(reaction)
 
-        db.update_guild_settings(inter.guild_id, distribution=(inter.channel_id, mes.id))
+        self.db.update_guild_settings(inter.guild_id, distribution=(inter.channel_id, mes.id))
 
         logger.info(f'[CALL] <@{inter.author.id}> /distribution_new_message')
 
@@ -85,34 +89,40 @@ class DistributionCommands(commands.Cog):
             logger.info(f'[CALL] <@{inter.author.id}> /distribution_add_role forbidden add_reactions')
 
         elif role.is_default() or not role.is_assignable():
-            await inter.response.send_message('Невозможно добавить связку роль - реакция, данная роль превосходит роль '
-                                              'бота или является ролью по умолчанию.', ephemeral=True)
+            await inter.response.send_message(
+                'Невозможно добавить связку роль - реакция, данная роль превосходит роль '
+                'бота или является ролью по умолчанию.', ephemeral=True
+            )
 
             logger.info(f'[CALL] <@{inter.author.id}> /distribution_add_role incorrect role')
 
         elif emoji.is_emoji(reaction):
-            if db.update_reaction4role(inter.guild_id, role.id, reaction) == -1:
+            if self.db.update_reaction4role(inter.guild_id, role.id, reaction) == -1:
                 await inter.response.send_message(
                     'Невозможно добавить связку роль - реакция, данная реакция или роль уже участвует в раздаче, '
-                    'вы можете удалить лишние связки роль-реакция командой /distribution_del_role', ephemeral=True)
+                    'вы можете удалить лишние связки роль-реакция командой /distribution_del_role', ephemeral=True
+                )
 
                 logger.info(f'[CALL] <@{inter.author.id}> /distribution_add_role role or reaction is used')
                 return
 
             logger.info(f'[CALL] <@{inter.author.id}> /distribution_add_role role`s append')
 
-            info = db.get_data('guilds', id=inter.guild_id)[0][4:6]
+            info = self.db.get_data('guilds', id=inter.guild_id)[0][4:6]
             if not all(info):
                 await inter.response.send_message(
                     'Связка роль - реакция добавлена, используй /distribution_new_message, '
-                    'чтобы создать сообщение выдачи ролей.', ephemeral=True)
+                    'чтобы создать сообщение выдачи ролей.', ephemeral=True
+                )
                 return
 
-            emb = disnake.Embed(title='Выбери роли',
-                                description='Поставь реакцию для получения соответствующей роли',
-                                colour=disnake.Colour.gold())
+            emb = disnake.Embed(
+                title='Выбери роли',
+                description='Поставь реакцию для получения соответствующей роли',
+                colour=disnake.Colour.gold()
+            )
 
-            roles = db.get_data('reaction4role', 'role, reaction', guild_id=inter.guild_id)[:10]
+            roles = self.db.get_data('reaction4role', 'role, reaction', guild_id=inter.guild_id)[:10]
             for role, react in roles:
                 emb.add_field(name='', value=f'{react} - <@&{role}>', inline=False)
 
@@ -121,7 +131,8 @@ class DistributionCommands(commands.Cog):
             except (disnake.errors.NotFound, disnake.errors.Forbidden):
                 await inter.response.send_message(
                     'Связка роль - реакция добавлена, старое сообщение с раздачей недоступно, '
-                    'используй /distribution_new_message, чтобы создать сообщение выдачи ролей.', ephemeral=True)
+                    'используй /distribution_new_message, чтобы создать сообщение выдачи ролей.', ephemeral=True
+                )
             else:
                 await mes.add_reaction(reaction)
 
@@ -132,8 +143,9 @@ class DistributionCommands(commands.Cog):
             logger.info(f'[CALL] <@{inter.author.id}> /distribution_add_role distribution`s update')
 
         else:
-            await inter.response.send_message('Невозможно добавить связку роль - реакция, переданная реакция не '
-                                              'является смайликом.', ephemeral=True)
+            await inter.response.send_message(
+                'Невозможно добавить связку роль - реакция, переданная реакция не является смайликом.', ephemeral=True
+            )
 
             logger.info(f'[CALL] <@{inter.author.id}> /distribution_add_role reaction isn`t emoji')
 
@@ -151,8 +163,8 @@ class DistributionCommands(commands.Cog):
             logger.info(f'[CALL] <@{inter.author.id}> /distribution_del_role forbidden add_reactions')
             return
 
-        reaction = db.get_data('reaction4role', 'reaction', guild_id=inter.guild_id, role=role.id)
-        db.delete_date('reaction4role', guild_id=inter.guild_id, role=role.id)
+        reaction = self.db.get_data('reaction4role', 'reaction', guild_id=inter.guild_id, role=role.id)
+        self.db.delete_date('reaction4role', guild_id=inter.guild_id, role=role.id)
 
         if reaction:
             reaction = reaction[0][0]
@@ -167,18 +179,21 @@ class DistributionCommands(commands.Cog):
 
         logger.info(f'[CALL] <@{inter.author.id}> /distribution_del_role role is deleted')
 
-        info = db.get_data('guilds', id=inter.guild_id)[0][4:6]
+        info = self.db.get_data('guilds', id=inter.guild_id)[0][4:6]
         if not all(info):
             await inter.response.send_message(
                 'Связка роль - реакция удалена, используй /distribution_new_message, '
-                'чтобы создать сообщение выдачи ролей.', ephemeral=True)
+                'чтобы создать сообщение выдачи ролей.', ephemeral=True
+            )
             return
 
-        emb = disnake.Embed(title='Выбери роли',
-                            description='Поставь реакцию для получения соответствующей роли',
-                            colour=disnake.Colour.gold())
+        emb = disnake.Embed(
+            title='Выбери роли',
+            description='Поставь реакцию для получения соответствующей роли',
+            colour=disnake.Colour.gold()
+        )
 
-        roles = db.get_data('reaction4role', 'role, reaction', guild_id=inter.guild_id)[:10]
+        roles = self.db.get_data('reaction4role', 'role, reaction', guild_id=inter.guild_id)[:10]
         for role, react in roles:
             emb.add_field(name='', value=f'{react} - <@&{role}>', inline=False)
 
@@ -187,7 +202,8 @@ class DistributionCommands(commands.Cog):
         except (disnake.errors.NotFound, disnake.errors.Forbidden):
             await inter.response.send_message(
                 'Связка роль - реакция удалена, старое сообщение с раздачей недоступно, '
-                'используй /distribution_new_message, чтобы создать сообщение выдачи ролей.', ephemeral=True)
+                'используй /distribution_new_message, чтобы создать сообщение выдачи ролей.', ephemeral=True
+            )
         else:
             await mes.remove_reaction(reaction, self.bot.user)
 

@@ -5,9 +5,11 @@ import disnake
 from disnake.ext import commands
 
 from cogs.buttons import Voting
-from main import db
+from utils.db import DB
 from utils.free_games import search_games
 from utils.logger import logger
+
+db = DB()
 
 
 def key_sort(a):
@@ -39,7 +41,9 @@ async def add_guild2db(bot, guild_id):
             async for mes in ch.history(limit=10000):
                 if not mes.author.bot and mes.author.name != 'Deleted User':
                     name = mes.author.name.encode('windows-1251', 'replace').decode('windows-1251')
-                    db.update_user(mes.guild.id, mes.author.id, name, len(mes.content), len(mes.attachments), comm=False)
+                    db.update_user(
+                        mes.guild.id, mes.author.id, name, len(mes.content), len(mes.attachments), comm=False
+                    )
 
         except disnake.errors.Forbidden:
             continue
@@ -55,7 +59,7 @@ async def refresh(bot: commands.InteractionBot):
     logger.debug('[START] guilds refresh')
 
     cur_guilds = [g.id for g in bot.guilds]
-    db_guilds = [g[0] for g in db.get_data('guilds')]
+    db_guilds = [g[0] for g in db.get_data('guilds', 'id')]
 
     if db_guilds != cur_guilds:
         for guild_id in set(db_guilds) - set(cur_guilds):
@@ -64,6 +68,11 @@ async def refresh(bot: commands.InteractionBot):
 
         for guild_id in set(cur_guilds) - set(db_guilds):
             await add_guild2db(bot, guild_id)
+
+    for g in db.get_data('guilds', 'id, analyze'):
+        if not g[1]:
+            await add_guild2db(bot, g[0])
+            logger.warning(f'[IN PROGRESS] guilds refresh : guild {g[0]} isn`t analyzed')
 
     logger.debug('[IN PROGRESS] all guilds refresh')
 
@@ -116,9 +125,11 @@ class UpdateDB:
                 for key in set(res):
                     d = res.count(key) / len(res)
                     stat.append(
-                        (key[:18],
-                         '🔳' * int(d * 10) + '⬜' * (10 - int(d * 10)),
-                         f'{round(100 * d, 2):.2f} % - {res.count(key)} голос')
+                        [
+                            key[:18],
+                            '🔳' * int(d * 10) + '⬜' * (10 - int(d * 10)),
+                            f'{round(100 * d, 2):.2f} % - {res.count(key)} голос'
+                        ]
                     )
 
                 emb.add_field('', '**Результаты:**')

@@ -3,7 +3,7 @@ import random
 import disnake
 from disnake.ext import commands
 
-from main import db
+from utils.db import DB
 from utils.logger import logger
 
 PARAMS_STORE = {'Все': None,
@@ -18,6 +18,7 @@ PARAMS_DLC = {'Все': None,
 class GameCommands(commands.Cog):
     def __init__(self, bot: commands.InteractionBot):
         self.bot = bot
+        self.db = DB()
 
     @commands.slash_command(
         name='roll',
@@ -35,11 +36,14 @@ class GameCommands(commands.Cog):
         description='Отправить список игр, которые раздают в Steam или EpicGames.',
     )
     async def free_games(
-            self, inter: disnake.ApplicationCommandInteraction,
-            store: str = commands.Param(choices=list(PARAMS_STORE.keys()), default='Все',
-                                        description='Выберите магазин'),
-            dlc: str = commands.Param(choices=list(PARAMS_DLC.keys()), default='Все',
-                                      description='Выберите тип игры')
+            self,
+            inter: disnake.ApplicationCommandInteraction,
+            store: str = commands.Param(
+                choices=list(PARAMS_STORE.keys()), default='Все', description='Выберите магазин'
+            ),
+            dlc: str = commands.Param(
+                choices=list(PARAMS_DLC.keys()), default='Все', description='Выберите тип игры'
+            )
     ):
         """Слэш-команда, отправляет в ответ список игр, ставших бесплатными."""
 
@@ -49,13 +53,13 @@ class GameCommands(commands.Cog):
         store = PARAMS_STORE[store]
 
         if store is not None and dlc is not None:
-            games = db.get_data('games', dlc=dlc, store=store)[:25]
+            games = self.db.get_data('games', dlc=dlc, store=store)[:25]
         elif store is not None:
-            games = db.get_data('games', store=store)[:25]
+            games = self.db.get_data('games', store=store)[:25]
         elif dlc is not None:
-            games = db.get_data('games', dlc=dlc)[:25]
+            games = self.db.get_data('games', dlc=dlc)[:25]
         else:
-            games = db.get_data('games')
+            games = self.db.get_data('games')
 
         emb = disnake.Embed(title='Сейчас бесплатны', colour=disnake.Colour.gold())
         for game in games:
